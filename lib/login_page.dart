@@ -20,6 +20,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _showEmailPassword = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -32,18 +33,21 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _sendOTP() async {
     if (_mobileController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your mobile number')),
+        const SnackBar(
+          content: Text('Please enter your mobile number'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
 
     setState(() {
       _isLoading = true;
+      _errorMessage = null;
     });
 
     try {
       print('Checking if mobile number is registered...');
-      // First check if mobile number is registered
       final checkResponse = await http.post(
         Uri.parse('http://test.shoppazing.com/api/shop/registeruser'),
         headers: AuthService.getAuthHeaders(),
@@ -65,69 +69,60 @@ class _LoginPageState extends State<LoginPage> {
       final statusCode = checkData['status_code'];
       final message = checkData['message'];
 
-      if (statusCode == 1 && message == "Mobile No exist") {
-        // Mobile number is registered, proceed with OTP
-        print('Mobile number is registered, sending OTP...');
-        final response = await http
-            .post(
-              Uri.parse('http://test.shoppazing.com/api/shop/sendotp'),
-              headers: AuthService.getAuthHeaders(),
-              body: jsonEncode({
-                'UserId': '', // Empty string as per sample
-                'MobileNo': _mobileController.text,
-                'AppHash': 'h234shsw',
-              }),
-            )
-            .timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                throw Exception(
-                  'Connection timed out. Please check your internet connection.',
-                );
-              },
-            );
+      // Send OTP regardless of registration status
+      print('Sending OTP...');
+      final response = await http.post(
+        Uri.parse('http://test.shoppazing.com/api/shop/sendotp'),
+        headers: AuthService.getAuthHeaders(),
+        body: jsonEncode({
+          'UserId': '',
+          'MobileNo': _mobileController.text,
+          'AppHash': 'h234shsw',
+        }),
+      );
 
-        print('OTP response status code: ${response.statusCode}');
-        print('OTP response body: ${response.body}');
+      print('OTP response status code: ${response.statusCode}');
+      print('OTP response body: ${response.body}');
 
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          if (mounted) {
-            print('OTP sent successfully, navigating to verification page');
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder:
-                    (context) => OTPVerificationPage(
-                      mobileNumber: _mobileController.text,
-                    ),
-              ),
-            );
-          }
-        } else {
-          final errorMessage =
-              'Failed to send OTP. Status: ${response.statusCode}';
-          print(errorMessage);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (!mounted) return;
+
+        // Show appropriate message based on registration status
+        if (statusCode == 1 && message == "Mobile No exist") {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMessage),
-              duration: const Duration(seconds: 3),
+            const SnackBar(
+              content: Text('OTP sent successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Mobile number not registered. Please complete registration after OTP verification.',
+              ),
+              backgroundColor: Colors.orange,
             ),
           );
         }
-      } else {
-        // Mobile number is not registered
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Mobile number not registered. Please register first.',
-            ),
-            backgroundColor: Colors.red,
+
+        // Navigate to OTP verification page
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder:
+                (context) =>
+                    OTPVerificationPage(mobileNumber: _mobileController.text),
           ),
         );
+      } else {
+        throw Exception('Failed to send OTP');
       }
     } on SocketException catch (e) {
       print('Network error: $e');
+      setState(() {
+        _errorMessage = 'Network error. Please check your internet connection.';
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -137,11 +132,15 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
     } catch (e) {
-      print('Error: $e');
+      print('Error sending OTP: $e');
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'An error occurred. Please try again.';
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString()),
-          duration: const Duration(seconds: 3),
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
         ),
       );
     } finally {
