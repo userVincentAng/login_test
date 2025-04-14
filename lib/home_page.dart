@@ -52,7 +52,6 @@ class _HomePageState extends State<HomePage>
 
   @override
   Widget build(BuildContext context) {
-    // Define the airforce blue color
     const Color airforceBlue = Color(0xFF5D8AA8);
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
@@ -138,18 +137,18 @@ class _HomePageState extends State<HomePage>
                 _buildSectionTitle('Nearby Stores', isSmallScreen),
                 _buildHorizontalCarousel(context, [
                   _buildStoreCard(
-                    'Store 1',
-                    'assets/store1.jpg',
+                    'Gabs Binalot United',
+                    Colors.orange[100]!,
                     isSmallScreen,
                   ),
                   _buildStoreCard(
-                    'Store 2',
-                    'assets/store2.jpg',
+                    'Jollibee - Main Street',
+                    Colors.blue[100]!,
                     isSmallScreen,
                   ),
                   _buildStoreCard(
-                    'Store 3',
-                    'assets/store3.jpg',
+                    'McDonald\'s - City Center',
+                    Colors.green[100]!,
                     isSmallScreen,
                   ),
                 ]),
@@ -158,18 +157,18 @@ class _HomePageState extends State<HomePage>
                 _buildSectionTitle('Recommended For You', isSmallScreen),
                 _buildHorizontalCarousel(context, [
                   _buildStoreCard(
-                    'Restaurant 1',
-                    'assets/restaurant1.jpg',
+                    'Mang Inasal - Plaza',
+                    Colors.red[100]!,
                     isSmallScreen,
                   ),
                   _buildStoreCard(
-                    'Restaurant 2',
-                    'assets/restaurant2.jpg',
+                    'KFC - Downtown',
+                    Colors.purple[100]!,
                     isSmallScreen,
                   ),
                   _buildStoreCard(
-                    'Restaurant 3',
-                    'assets/restaurant3.jpg',
+                    'Chowking Express',
+                    Colors.teal[100]!,
                     isSmallScreen,
                   ),
                 ]),
@@ -178,29 +177,44 @@ class _HomePageState extends State<HomePage>
                 _buildSectionTitle('Popular Restaurants', isSmallScreen),
                 _buildHorizontalCarousel(context, [
                   _buildStoreCard(
-                    'Restaurant 4',
-                    'assets/restaurant4.jpg',
+                    'Max\'s Restaurant',
+                    Colors.amber[100]!,
                     isSmallScreen,
                   ),
                   _buildStoreCard(
-                    'Restaurant 5',
-                    'assets/restaurant5.jpg',
+                    'Shakey\'s Pizza',
+                    Colors.indigo[100]!,
                     isSmallScreen,
                   ),
                   _buildStoreCard(
-                    'Restaurant 6',
-                    'assets/restaurant6.jpg',
+                    'Greenwich Pizza',
+                    Colors.pink[100]!,
                     isSmallScreen,
                   ),
                 ]),
 
                 // Popular Shops Section
-                _buildSectionTitle('Popular Shops', isSmallScreen),
+                _buildSectionTitle('Local Food Shops', isSmallScreen),
                 _buildHorizontalCarousel(context, [
-                  _buildStoreCard('Shop 1', 'assets/shop1.jpg', isSmallScreen),
-                  _buildStoreCard('Shop 2', 'assets/shop2.jpg', isSmallScreen),
-                  _buildStoreCard('Shop 3', 'assets/shop3.jpg', isSmallScreen),
+                  _buildStoreCard(
+                    'Aling Nena\'s Carinderia',
+                    Colors.cyan[100]!,
+                    isSmallScreen,
+                  ),
+                  _buildStoreCard(
+                    'Juan\'s BBQ House',
+                    Colors.brown[100]!,
+                    isSmallScreen,
+                  ),
+                  _buildStoreCard(
+                    'Manong\'s Sisig Corner',
+                    Colors.lime[100]!,
+                    isSmallScreen,
+                  ),
                 ]),
+
+                // Add bottom padding for navigation bar
+                SizedBox(height: isSmallScreen ? 60 : 70),
               ],
             ),
           ),
@@ -382,7 +396,7 @@ class _HomePageState extends State<HomePage>
 
   Widget _buildHorizontalCarousel(BuildContext context, List<Widget> items) {
     return SizedBox(
-      height: 200,
+      height: MediaQuery.of(context).size.width < 360 ? 180 : 200,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.symmetric(
@@ -399,7 +413,11 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  Widget _buildStoreCard(String name, String imagePath, bool isSmallScreen) {
+  Widget _buildStoreCard(
+    String name,
+    Color backgroundColor,
+    bool isSmallScreen,
+  ) {
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -424,30 +442,25 @@ class _HomePageState extends State<HomePage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(12),
-              ),
-              child: Container(
-                height: isSmallScreen ? 100 : 120,
-                color: Colors.grey[300],
-                child: Center(
-                  child: Icon(
-                    Icons.image,
-                    size: isSmallScreen ? 40 : 50,
-                    color: Colors.grey,
-                  ),
+            Container(
+              height: isSmallScreen ? 100 : 120,
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12),
                 ),
               ),
             ),
             Padding(
-              padding: EdgeInsets.all(isSmallScreen ? 6.0 : 8.0),
+              padding: EdgeInsets.all(isSmallScreen ? 8.0 : 12.0),
               child: Text(
                 name,
                 style: TextStyle(
                   fontSize: isSmallScreen ? 14 : 16,
                   fontWeight: FontWeight.bold,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

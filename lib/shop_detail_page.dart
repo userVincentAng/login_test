@@ -31,6 +31,7 @@ class _ShopDetailPageState extends State<ShopDetailPage>
   @override
   Widget build(BuildContext context) {
     const Color airforceBlue = Color(0xFF5D8AA8);
+    final isSmallScreen = MediaQuery.of(context).size.width < 360;
 
     return Scaffold(
       body: CustomScrollView(
@@ -92,35 +93,50 @@ class _ShopDetailPageState extends State<ShopDetailPage>
           ),
           // Menu Items
           SliverPadding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 _buildMenuItem(
                   '(B-BB) Boneless Bangus',
                   '109.00',
                   Colors.orange[100]!,
+                  isSmallScreen,
                 ),
                 _buildMenuItem(
                   '(B-BS) Beef Steak',
                   '119.00',
                   Colors.brown[100]!,
+                  isSmallScreen,
                 ),
                 _buildMenuItem(
                   '(B-CA) Chicken Adobo',
                   '99.00',
                   Colors.amber[100]!,
+                  isSmallScreen,
                 ),
-                _buildMenuItem('(B-CDT) Caldereta', '119.00', Colors.red[100]!),
+                _buildMenuItem(
+                  '(B-CDT) Caldereta',
+                  '119.00',
+                  Colors.red[100]!,
+                  isSmallScreen,
+                ),
                 _buildMenuItem(
                   '(B-CPA) Chicken Pork Adobo',
                   '119.00',
                   Colors.deepOrange[100]!,
+                  isSmallScreen,
                 ),
-                _buildMenuItem('(B-LI) Liempo', '119.00', Colors.pink[100]!),
+                _buildMenuItem(
+                  '(B-LI) Liempo',
+                  '119.00',
+                  Colors.pink[100]!,
+                  isSmallScreen,
+                ),
                 _buildMenuItem(
                   '(B-LK) Lechon Kawali',
                   '129.00',
                   Colors.brown[200]!,
+                  isSmallScreen,
                 ),
               ]),
             ),
@@ -130,9 +146,14 @@ class _ShopDetailPageState extends State<ShopDetailPage>
     );
   }
 
-  Widget _buildMenuItem(String name, String price, Color backgroundColor) {
+  Widget _buildMenuItem(
+    String name,
+    String price,
+    Color backgroundColor,
+    bool isSmallScreen,
+  ) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
+      padding: EdgeInsets.only(bottom: isSmallScreen ? 12.0 : 16.0),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -152,7 +173,7 @@ class _ShopDetailPageState extends State<ShopDetailPage>
           },
           borderRadius: BorderRadius.circular(12),
           child: Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: EdgeInsets.all(isSmallScreen ? 10.0 : 12.0),
             child: Row(
               children: [
                 Expanded(
@@ -162,17 +183,17 @@ class _ShopDetailPageState extends State<ShopDetailPage>
                     children: [
                       Text(
                         name,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 14 : 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: isSmallScreen ? 2 : 4),
                       Text(
                         '₱$price',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF5D8AA8),
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 14 : 16,
+                          color: const Color(0xFF5D8AA8),
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -180,8 +201,8 @@ class _ShopDetailPageState extends State<ShopDetailPage>
                   ),
                 ),
                 Container(
-                  width: 80,
-                  height: 80,
+                  width: isSmallScreen ? 70 : 80,
+                  height: isSmallScreen ? 70 : 80,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     color: backgroundColor,
