@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'services/auth_service.dart';
 import 'registration_page.dart';
+import 'home_page.dart';
 
 class OTPVerificationPage extends StatefulWidget {
   final String mobileNumber;
@@ -56,12 +57,6 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
     });
 
     try {
-      // First, authenticate to get the token
-      final isAuthenticated = await AuthService.authenticate();
-      if (!isAuthenticated) {
-        throw Exception('Failed to authenticate. Please try again.');
-      }
-
       print('Verifying OTP: $otp');
       final response = await http.post(
         Uri.parse('http://test.shoppazing.com/api/shop/verifyotp'),
@@ -78,6 +73,29 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
       print('OTP verification response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
+        // Check if user is already registered
+        print('Checking if user is already registered...');
+        final checkResponse = await http.post(
+          Uri.parse('http://test.shoppazing.com/api/shop/registeruser'),
+          headers: AuthService.getAuthHeaders(),
+          body: jsonEncode({
+            'Email': '',
+            'Firstname': '',
+            'Lastname': '',
+            'MobileNo': widget.mobileNumber,
+            'Password': '',
+            'RoleName': 'User',
+          }),
+        );
+
+        print('User check response status code: ${checkResponse.statusCode}');
+        print('User check response body: ${checkResponse.body}');
+
+        // Parse the response body to check the status_code
+        final checkData = jsonDecode(checkResponse.body);
+        final statusCode = checkData['status_code'];
+        final message = checkData['message'];
+
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -85,15 +103,26 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
             backgroundColor: Colors.green,
           ),
         );
-        // Navigate to registration page after successful OTP verification
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder:
-                (context) =>
-                    RegistrationPage(mobileNumber: widget.mobileNumber),
-          ),
-        );
+
+        if (statusCode == 1 && message == "Mobile No exist") {
+          // User is already registered, navigate to home page
+          print('User is already registered, navigating to home page...');
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomePage()),
+          );
+        } else {
+          // User is not registered, navigate to registration page
+          print('User is not registered, navigating to registration page...');
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (context) =>
+                      RegistrationPage(mobileNumber: widget.mobileNumber),
+            ),
+          );
+        }
       } else {
         throw Exception('Invalid OTP');
       }

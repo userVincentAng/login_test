@@ -42,49 +42,87 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      print('Sending OTP request for mobile: ${_mobileController.text}');
-      final response = await http
-          .post(
-            Uri.parse('http://test.shoppazing.com/api/shop/sendotp'),
-            headers: AuthService.getAuthHeaders(),
-            body: jsonEncode({
-              'UserId': '', // Empty string as per sample
-              'MobileNo': _mobileController.text,
-              'AppHash': 'h234shsw',
-            }),
-          )
-          .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              throw Exception(
-                'Connection timed out. Please check your internet connection.',
-              );
-            },
-          );
+      print('Checking if mobile number is registered...');
+      // First check if mobile number is registered
+      final checkResponse = await http.post(
+        Uri.parse('http://test.shoppazing.com/api/shop/registeruser'),
+        headers: AuthService.getAuthHeaders(),
+        body: jsonEncode({
+          'Email': '',
+          'Firstname': '',
+          'Lastname': '',
+          'MobileNo': _mobileController.text,
+          'Password': '',
+          'RoleName': 'User',
+        }),
+      );
 
-      print('OTP response status code: ${response.statusCode}');
-      print('OTP response body: ${response.body}');
+      print('Mobile check response status code: ${checkResponse.statusCode}');
+      print('Mobile check response body: ${checkResponse.body}');
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        if (mounted) {
-          print('OTP sent successfully, navigating to verification page');
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder:
-                  (context) =>
-                      OTPVerificationPage(mobileNumber: _mobileController.text),
+      // Parse the response body to check the status_code
+      final checkData = jsonDecode(checkResponse.body);
+      final statusCode = checkData['status_code'];
+      final message = checkData['message'];
+
+      if (statusCode == 1 && message == "Mobile No exist") {
+        // Mobile number is registered, proceed with OTP
+        print('Mobile number is registered, sending OTP...');
+        final response = await http
+            .post(
+              Uri.parse('http://test.shoppazing.com/api/shop/sendotp'),
+              headers: AuthService.getAuthHeaders(),
+              body: jsonEncode({
+                'UserId': '', // Empty string as per sample
+                'MobileNo': _mobileController.text,
+                'AppHash': 'h234shsw',
+              }),
+            )
+            .timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                throw Exception(
+                  'Connection timed out. Please check your internet connection.',
+                );
+              },
+            );
+
+        print('OTP response status code: ${response.statusCode}');
+        print('OTP response body: ${response.body}');
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          if (mounted) {
+            print('OTP sent successfully, navigating to verification page');
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder:
+                    (context) => OTPVerificationPage(
+                      mobileNumber: _mobileController.text,
+                    ),
+              ),
+            );
+          }
+        } else {
+          final errorMessage =
+              'Failed to send OTP. Status: ${response.statusCode}';
+          print(errorMessage);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              duration: const Duration(seconds: 3),
             ),
           );
         }
       } else {
-        final errorMessage =
-            'Failed to send OTP. Status: ${response.statusCode}';
-        print(errorMessage);
+        // Mobile number is not registered
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            duration: const Duration(seconds: 3),
+          const SnackBar(
+            content: Text(
+              'Mobile number not registered. Please register first.',
+            ),
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -99,7 +137,7 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
     } catch (e) {
-      print('Error sending OTP: $e');
+      print('Error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString()),
@@ -123,20 +161,30 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      print('Attempting to login with email and password...');
-      final response = await http.post(
-        Uri.parse('http://test.shoppazing.com/api/shop/login'),
+      print('Attempting to login...');
+      final loginResponse = await http.post(
+        Uri.parse('http://test.shoppazing.com/api/shop/registeruser'),
         headers: AuthService.getAuthHeaders(),
         body: jsonEncode({
           'Email': _emailController.text,
+          'Firstname': '', // Empty for login
+          'Lastname': '', // Empty for login
+          'MobileNo': '', // Empty for login
           'Password': _passwordController.text,
+          'RoleName': 'User',
         }),
       );
 
-      print('Login response status code: ${response.statusCode}');
-      print('Login response body: ${response.body}');
+      print('Login response status code: ${loginResponse.statusCode}');
+      print('Login response body: ${loginResponse.body}');
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      // Parse the response body to check the status_code
+      final loginData = jsonDecode(loginResponse.body);
+      final statusCode = loginData['status_code'];
+      final message = loginData['message'];
+
+      if (statusCode == 1 && message == "User already exist") {
+        // Login successful
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -147,7 +195,14 @@ class _LoginPageState extends State<LoginPage> {
         // Navigate to home page after successful login
         Navigator.pushReplacementNamed(context, '/home');
       } else {
-        throw Exception('Login failed. Status: ${response.statusCode}');
+        // Login failed
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invalid email or password'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
       print('Error during login: $e');
