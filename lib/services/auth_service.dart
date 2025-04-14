@@ -1,0 +1,17 @@
+class AuthService {
+  static const String _baseUrl = 'http://test.shoppazing.com/api';
+  static const String _accessToken =
+      'qVvrUP6xhQfhsiSBuCf_9VHeKjlywselicoEC7AL6glKo4V9mRoe_9LoGedxTMojdmUTt0qijVg4FH3-jVfgOLWpJ7YF853qVeCGFQBRSRRY8Ql5RzCBs5ZxnqQQcXUe7goZCBAf1jXguE2RDszDa4XFMIvxRztFQR_F9uUzM41CBERAL8qZDZnNyWTmwvvbpMGBcLvOVuwnRUsIpcQdZoJQRmPVQpv-nn6wC9UCBy9_NmeypkifAupQNSuLOa6UrBzecivEVezx7D7ugx4enA7vTmILxUaUzwdVQrga5fKKrSmOfPb5RyqDOFrNKHmVYIOpeXlqvigbFO9WjPZSj9nuamS_qAMO2VKMue_3szyGp69kSf0vlSYtfyRKG25pbQPxQCCVzuaZfJNGzBhu-zJ2wUcdUwTc0b7R6Qpc2Yu_4WUoJg0bKqWrN7iWzm3KFowr7ktLC_VHPhVNhCfVQJiiH8I_rvAzPiMrI8pIxLnqbakAxcyk1NZ3yeEUzR8VWfjxt-hjJOscp5E1QENepQc2bzPTTTqxjqnPi1jflQFO0IeYklKIc0zMfF-ybgCJSAkKxi38cITLwdcqGj7e5wTTJtgF8spKvglXTPQXqhfbN6syrEnetmQO1MuyK7X3VE-S_kMC7hiVZisUs-t_I1dvX7HjznnMhIizAoJGefpkaJr49gF8UTYIB7YpxCBNBuD_PMyKGcDubwIQYJjcvmQ832D0u5XKpZmCFFYdxtIGTH6z4yqfPKHbaoLKL8IB487OHXEfxPdsTu7uJiLHYaabtVcAVgW6p6dDinzrz6Eq6BJkD76n2brtxY5t3R58beyR7gyAH7YVH6L2bbWGkl97EKUVC56YaGrr3ONkDYwaICzG692JWzXxq7JLWZT5OGOZimAD3-8vsWn7nMqev5KuAUtdidKXTUPUzRfWnQqRTn779FPvNC9BTwu1rXIljId7qfmNrhhjnD3kZcWzxprEgHrTpkpJ9baEe37ITUaH6BUfcOzcnexNvp2D3iJq8-6mgYVAFlcug7JQyk9nZLQ-l__9jalTVOCcQH8TDPMttq8apGxi33_Cw_S3ArIcugp4wGpn4fe_zRPmwnbSzPh6_C4vZ3KofyFzz93pdjq7CTBeiphfunD6HK7PaF3mDntPjVp-NM1C6rQ2VWKx1clWQKtqij9-E9ZM84iIolU';
+
+  static Future<bool> authenticate() async {
+    // Always return true since we're using a static token
+    return true;
+  }
+
+  static Map<String, String> getAuthHeaders() {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $_accessToken',
+    };
+  }
+}
