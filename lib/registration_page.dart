@@ -52,7 +52,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
           'Lastname': _lastNameController.text,
           'MobileNo': widget.mobileNumber,
           'Password': _passwordController.text,
-          'RoleName': 'User', // Default role
+          'RoleName': 'CUSTOMER', // Default role
         }),
       );
 
