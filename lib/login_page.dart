@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'otp_verification_page.dart';
 import 'services/auth_service.dart';
+import 'location_selection_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -110,9 +111,8 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder:
-                (context) =>
-                    OTPVerificationPage(mobileNumber: _mobileController.text),
+            builder: (context) =>
+                OTPVerificationPage(mobileNumber: _mobileController.text),
           ),
         );
       } else {
@@ -191,8 +191,13 @@ class _LoginPageState extends State<LoginPage> {
             backgroundColor: Colors.green,
           ),
         );
-        // Navigate to home page after successful login
-        Navigator.pushReplacementNamed(context, '/home');
+        // Navigate to location selection page after successful login
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const LocationSelectionPage(),
+          ),
+        );
       } else {
         // Login failed
         if (!mounted) return;
@@ -285,22 +290,21 @@ class _LoginPageState extends State<LoginPage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child:
-                          _isLoading
-                              ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
                                 ),
-                              )
-                              : const Text(
-                                'Continue',
-                                style: TextStyle(fontSize: 16),
                               ),
+                            )
+                          : const Text(
+                              'Continue',
+                              style: TextStyle(fontSize: 16),
+                            ),
                     ),
                   ] else ...[
                     TextFormField(
@@ -376,22 +380,21 @@ class _LoginPageState extends State<LoginPage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child:
-                          _isLoading
-                              ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
                                 ),
-                              )
-                              : const Text(
-                                'Login',
-                                style: TextStyle(fontSize: 16),
                               ),
+                            )
+                          : const Text(
+                              'Login',
+                              style: TextStyle(fontSize: 16),
+                            ),
                     ),
                   ],
                 ],
