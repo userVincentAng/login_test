@@ -44,6 +44,12 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
         _focusNodes[index].unfocus();
         _verifyOTP();
       }
+    } else if (value.isEmpty && index > 0) {
+      // Handle backspace
+      _focusNodes[index - 1].requestFocus();
+      _controllers[index - 1].selection = TextSelection.fromPosition(
+        TextPosition(offset: _controllers[index - 1].text.length),
+      );
     }
   }
 
@@ -57,74 +63,94 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
     });
 
     try {
-      print('Verifying OTP: $otp');
+      print('Starting OTP verification process...');
+      print('Mobile number: ${widget.mobileNumber}');
+      print('OTP entered: $otp');
+
+      final requestBody = {
+        'UserId': '',
+        'MobileNo': widget.mobileNumber,
+        'OTP': otp,
+      };
+      print('Request body: $requestBody');
+
       final response = await http.post(
-        Uri.parse('http://test.shoppazing.com/api/shop/verifyotp'),
+        Uri.parse('http://test.shoppazing.com/api/shop/verifyotplogin'),
         headers: AuthService.getAuthHeaders(),
-        body: jsonEncode({
-          'UserId': '',
-          'MobileNo': widget.mobileNumber,
-          'OTP': otp,
-          'AppHash': 'h234shsw',
-        }),
+        body: jsonEncode(requestBody),
       );
 
       print('OTP verification response status code: ${response.statusCode}');
       print('OTP verification response body: ${response.body}');
 
+      // Parse the response body to check the status
+      final responseData = jsonDecode(response.body);
+      print('Parsed response data: $responseData');
+      final statusCode = responseData['status_code'];
+      final message = responseData['message'];
+      print('Status code: $statusCode');
+      print('Message: $message');
+
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // Check if user is already registered
-        print('Checking if user is already registered...');
-        final checkResponse = await http.post(
-          Uri.parse('http://test.shoppazing.com/api/shop/registeruser'),
-          headers: AuthService.getAuthHeaders(),
-          body: jsonEncode({
-            'Email': '',
-            'Firstname': '',
-            'Lastname': '',
-            'MobileNo': widget.mobileNumber,
-            'Password': '',
-            'RoleName': 'User',
-          }),
-        );
-
-        print('User check response status code: ${checkResponse.statusCode}');
-        print('User check response body: ${checkResponse.body}');
-
-        // Parse the response body to check the status_code
-        final checkData = jsonDecode(checkResponse.body);
-        final statusCode = checkData['status_code'];
-        final message = checkData['message'];
-
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('OTP verified successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        if (statusCode == 1 && message == "Mobile No exist") {
-          // User is already registered, navigate to home page
-          print('User is already registered, navigating to home page...');
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const HomePage()),
+        print('HTTP request was successful');
+        if (statusCode == 1 ||
+            (statusCode == 3 &&
+                message == "No user found with this mobile no.")) {
+          print('OTP verification successful');
+          // Check if user is already registered
+          print('Checking if user is already registered...');
+          final checkResponse = await http.post(
+            Uri.parse('http://test.shoppazing.com/api/shop/registeruser'),
+            headers: AuthService.getAuthHeaders(),
+            body: jsonEncode({
+              'Email': '',
+              'Firstname': '',
+              'Lastname': '',
+              'MobileNo': widget.mobileNumber,
+              'Password': '',
+              'RoleName': 'User',
+            }),
           );
-        } else {
-          // User is not registered, navigate to registration page
-          print('User is not registered, navigating to registration page...');
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder:
-                  (context) =>
-                      RegistrationPage(mobileNumber: widget.mobileNumber),
+
+          print('User check response status code: ${checkResponse.statusCode}');
+          print('User check response body: ${checkResponse.body}');
+
+          // Parse the response body to check the status_code
+          final checkData = jsonDecode(checkResponse.body);
+          final userStatusCode = checkData['status_code'];
+          final userMessage = checkData['message'];
+
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('OTP verified successfully!'),
+              backgroundColor: Colors.green,
             ),
           );
+
+          if (userStatusCode == 1 && userMessage == "Mobile No exist") {
+            // User is already registered, navigate to home page
+            print('User is already registered, navigating to home page...');
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const HomePage()),
+            );
+          } else {
+            // User is not registered, navigate to registration page
+            print('User is not registered, navigating to registration page...');
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    RegistrationPage(mobileNumber: widget.mobileNumber),
+              ),
+            );
+          }
+        } else {
+          throw Exception('Invalid OTP. Please try again.');
         }
       } else {
-        throw Exception('Invalid OTP');
+        throw Exception('Failed to verify OTP. Please try again.');
       }
     } on SocketException catch (e) {
       print('Network error: $e');
@@ -143,7 +169,7 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
       print('Error verifying OTP: $e');
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'An error occurred. Please try again.';
+        _errorMessage = e.toString();
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -205,6 +231,9 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
                         ),
                       ),
                       onChanged: (value) => _onOTPChanged(index, value),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
                     ),
                   ),
                 ),
@@ -218,22 +247,21 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child:
-                    _isLoading
-                        ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
                           ),
-                        )
-                        : const Text(
-                          'Verify OTP',
-                          style: TextStyle(fontSize: 16),
                         ),
+                      )
+                    : const Text(
+                        'Verify OTP',
+                        style: TextStyle(fontSize: 16),
+                      ),
               ),
             ],
           ),

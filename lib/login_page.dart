@@ -42,6 +42,18 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
+    // Validate mobile number format
+    final mobileNumber = _mobileController.text;
+    if (!RegExp(r'^09\d{9}$').hasMatch(mobileNumber)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Mobile number must be 11 digits and start with 09'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -70,10 +82,10 @@ class _LoginPageState extends State<LoginPage> {
       final statusCode = checkData['status_code'];
       final message = checkData['message'];
 
-      // Send OTP regardless of registration status
-      print('Sending OTP...');
+      // Send OTP using loginbyotp endpoint
+      print('Sending OTP using loginbyotp endpoint...');
       final response = await http.post(
-        Uri.parse('http://test.shoppazing.com/api/shop/sendotp'),
+        Uri.parse('http://test.shoppazing.com/api/shop/loginbyotp'),
         headers: AuthService.getAuthHeaders(),
         body: jsonEncode({
           'UserId': '',
@@ -100,8 +112,7 @@ class _LoginPageState extends State<LoginPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                'Mobile number not registered. Please complete registration after OTP verification.',
-              ),
+                  'Mobile number not registered. Please complete registration after OTP verification.'),
               backgroundColor: Colors.orange,
             ),
           );
@@ -162,27 +173,16 @@ class _LoginPageState extends State<LoginPage> {
     try {
       print('Attempting to login...');
       final loginResponse = await http.post(
-        Uri.parse('http://test.shoppazing.com/api/shop/registeruser'),
-        headers: AuthService.getAuthHeaders(),
-        body: jsonEncode({
-          'Email': _emailController.text,
-          'Firstname': '', // Empty for login
-          'Lastname': '', // Empty for login
-          'MobileNo': '', // Empty for login
-          'Password': _passwordController.text,
-          'RoleName': 'User',
-        }),
+        Uri.parse('http://test.shoppazing.com/api/token'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body:
+            'grant_type=password&username=${_emailController.text}&password=${_passwordController.text}',
       );
 
       print('Login response status code: ${loginResponse.statusCode}');
       print('Login response body: ${loginResponse.body}');
 
-      // Parse the response body to check the status_code
-      final loginData = jsonDecode(loginResponse.body);
-      final statusCode = loginData['status_code'];
-      final message = loginData['message'];
-
-      if (statusCode == 1 && message == "User already exist") {
+      if (loginResponse.statusCode == 200) {
         // Login successful
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -191,13 +191,8 @@ class _LoginPageState extends State<LoginPage> {
             backgroundColor: Colors.green,
           ),
         );
-        // Navigate to location selection page after successful login
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const LocationSelectionPage(),
-          ),
-        );
+        // Navigate to home page after successful login
+        Navigator.pushReplacementNamed(context, '/home');
       } else {
         // Login failed
         if (!mounted) return;
