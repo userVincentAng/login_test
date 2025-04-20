@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:latlong2/latlong.dart';
 import 'shop_detail_page.dart';
 import 'models/store.dart';
 import 'services/store_service.dart';
 import 'services/auth_service.dart';
+import 'address_selection_page.dart';
+import 'saved_addresses_page.dart';
+import 'services/address_service.dart';
 
 //April 15
 class HomePage extends StatefulWidget {
@@ -25,7 +29,9 @@ class _HomePageState extends State<HomePage>
   List<Store> _nearbyStores = [];
   bool _isLoading = true;
   String _errorMessage = '';
+  String _selectedAddress = '';
   final StoreService _storeService = StoreService();
+  final AddressService _addressService = AddressService();
 
   @override
   void initState() {
@@ -42,7 +48,7 @@ class _HomePageState extends State<HomePage>
       _currentPosition = widget.initialPosition;
       _fetchNearbyStores();
     } else {
-      _getCurrentLocation();
+      _loadDefaultAddress();
     }
   }
 
@@ -50,6 +56,35 @@ class _HomePageState extends State<HomePage>
   void dispose() {
     _animationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadDefaultAddress() async {
+    try {
+      final defaultAddress = await _addressService.getDefaultAddress();
+      if (defaultAddress != null) {
+        setState(() {
+          _currentPosition = Position(
+            latitude: defaultAddress.coordinates.latitude,
+            longitude: defaultAddress.coordinates.longitude,
+            timestamp: DateTime.now(),
+            accuracy: 0,
+            altitude: 0,
+            heading: 0,
+            speed: 0,
+            speedAccuracy: 0,
+            altitudeAccuracy: 0,
+            headingAccuracy: 0,
+          );
+          _selectedAddress = defaultAddress.fullAddress;
+        });
+        _fetchNearbyStores();
+      } else {
+        _getCurrentLocation();
+      }
+    } catch (e) {
+      print('Error loading default address: $e');
+      _getCurrentLocation();
+    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -211,6 +246,34 @@ class _HomePageState extends State<HomePage>
     }
   }
 
+  Future<void> _openAddressSelection() async {
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SavedAddressesPage(
+          onAddressSelected: (LatLng position, String address) {
+            setState(() {
+              _currentPosition = Position(
+                latitude: position.latitude,
+                longitude: position.longitude,
+                timestamp: DateTime.now(),
+                accuracy: 0,
+                altitude: 0,
+                heading: 0,
+                speed: 0,
+                speedAccuracy: 0,
+                altitudeAccuracy: 0,
+                headingAccuracy: 0,
+              );
+              _selectedAddress = address;
+            });
+            _fetchNearbyStores();
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const Color airforceBlue = Color(0xFF5D8AA8);
@@ -225,25 +288,30 @@ class _HomePageState extends State<HomePage>
       appBar: AppBar(
         backgroundColor: airforceBlue,
         elevation: 0,
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.location_on, size: 20),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                _currentPosition != null
-                    ? '${_currentPosition!.latitude.toStringAsFixed(4)}, ${_currentPosition!.longitude.toStringAsFixed(4)}'
-                    : 'Getting location...',
-                style: TextStyle(
-                  fontSize: isSmallScreen ? 14 : 16,
-                  overflow: TextOverflow.ellipsis,
+        title: InkWell(
+          onTap: _openAddressSelection,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.location_on, size: 20),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  _selectedAddress.isNotEmpty
+                      ? _selectedAddress
+                      : _currentPosition != null
+                          ? '${_currentPosition!.latitude.toStringAsFixed(4)}, ${_currentPosition!.longitude.toStringAsFixed(4)}'
+                          : 'Getting location...',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 14 : 16,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.arrow_drop_down, size: 20),
-          ],
+              const SizedBox(width: 8),
+              const Icon(Icons.arrow_drop_down, size: 20),
+            ],
+          ),
         ),
         leading: IconButton(
           icon: const Icon(Icons.menu),
