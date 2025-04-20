@@ -155,7 +155,7 @@ class _ShopDetailPageState extends State<ShopDetailPage>
                 ),
                 child: widget.store.storeUrl != null
                     ? Image.network(
-                        'http://test.shoppazing.com${widget.store.storeUrl}',
+                        'http://test.shoppazing.com/api${widget.store.storeUrl}',
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           return const Center(
@@ -317,7 +317,7 @@ class _ShopDetailPageState extends State<ShopDetailPage>
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: Image.network(
-                            'http://test.shoppazing.com${item!.imgUrl}',
+                            'http://test.shoppazing.com/api${item!.imgUrl}',
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
                               return const Center(

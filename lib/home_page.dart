@@ -4,6 +4,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'shop_detail_page.dart';
 import 'models/store.dart';
 import 'services/store_service.dart';
+import 'services/auth_service.dart';
 
 //April 15
 class HomePage extends StatefulWidget {
@@ -139,6 +140,77 @@ class _HomePageState extends State<HomePage>
     });
   }
 
+  Future<void> _handleLogout() async {
+    try {
+      // Show confirmation dialog
+      final bool? confirm = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Confirm Logout'),
+            content: const Text('Are you sure you want to logout?'),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('Cancel'),
+                onPressed: () => Navigator.of(context).pop(false),
+              ),
+              TextButton(
+                child: const Text('Logout'),
+                onPressed: () => Navigator.of(context).pop(true),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (confirm == true) {
+        // Close the drawer first
+        _toggleDrawer();
+
+        // Attempt to logout
+        final bool success = await AuthService.logout();
+
+        if (success) {
+          // Show loading indicator
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Logging out...'),
+              duration: Duration(seconds: 1),
+            ),
+          );
+
+          // Navigate to login page
+          if (!mounted) return;
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/',
+            (Route<dynamic> route) => false,
+          );
+
+          // Show success message
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Logged out successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          throw Exception('Logout failed');
+        }
+      }
+    } catch (e) {
+      print('Error during logout: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error logging out: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const Color airforceBlue = Color(0xFF5D8AA8);
@@ -196,10 +268,10 @@ class _HomePageState extends State<HomePage>
           ),
         ],
       ),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            SingleChildScrollView(
+      body: Stack(
+        children: [
+          SafeArea(
+            child: SingleChildScrollView(
               child: Padding(
                 padding: EdgeInsets.only(
                     bottom: bottomPadding + (isSmallScreen ? 60 : 70)),
@@ -280,115 +352,102 @@ class _HomePageState extends State<HomePage>
                 ),
               ),
             ),
-            // Menu Drawer
-            if (_isDrawerOpen)
-              Positioned(
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: screenWidth * (isLargeScreen ? 0.4 : 0.7),
+          ),
+          // Menu Drawer
+          if (_isDrawerOpen)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              width: screenWidth,
+              height: screenHeight,
+            ),
+          if (_isDrawerOpen)
+            Positioned(
+              left: 0,
+              top: 0,
+              height: screenHeight,
+              width: screenWidth * (isLargeScreen ? 0.4 : 0.7),
+              child: Material(
+                elevation: 16,
                 child: ScaleTransition(
                   scale: _scaleAnimation,
                   child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          spreadRadius: 5,
-                          blurRadius: 7,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          height: isSmallScreen ? 80 : 100,
-                          color: airforceBlue,
-                          padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: isSmallScreen ? 20 : 25,
-                                backgroundColor: Colors.white,
-                                child: Icon(
-                                  Icons.person,
-                                  color: airforceBlue,
-                                  size: isSmallScreen ? 24 : 30,
+                    color: Colors.white,
+                    height: screenHeight,
+                    child: SafeArea(
+                      bottom: false,
+                      child: Column(
+                        children: [
+                          Container(
+                            height: isSmallScreen ? 80 : 100,
+                            color: airforceBlue,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isSmallScreen ? 12 : 16,
+                              vertical: isSmallScreen ? 8 : 12,
+                            ),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: isSmallScreen ? 20 : 25,
+                                  backgroundColor: Colors.white,
+                                  child: Icon(
+                                    Icons.person,
+                                    color: airforceBlue,
+                                    size: isSmallScreen ? 24 : 30,
+                                  ),
                                 ),
-                              ),
-                              SizedBox(width: isSmallScreen ? 12 : 16),
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Welcome',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: isSmallScreen ? 14 : 16,
+                                SizedBox(width: isSmallScreen ? 12 : 16),
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Welcome',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: isSmallScreen ? 14 : 16,
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    'Sign in to your account',
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: isSmallScreen ? 12 : 14,
+                                    Text(
+                                      'Sign in to your account',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: isSmallScreen ? 12 : 14,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        Expanded(
-                          child: ListView(
-                            padding: EdgeInsets.zero,
-                            children: [
-                              _buildDrawerItem(
-                                  Icons.home, 'Home', isSmallScreen),
-                              _buildDrawerItem(
-                                Icons.favorite,
-                                'Favorites',
-                                isSmallScreen,
-                              ),
-                              _buildDrawerItem(
-                                Icons.history,
-                                'Order History',
-                                isSmallScreen,
-                              ),
-                              _buildDrawerItem(
-                                Icons.notifications,
-                                'Notifications',
-                                isSmallScreen,
-                              ),
-                              _buildDrawerItem(
-                                Icons.settings,
-                                'Settings',
-                                isSmallScreen,
-                              ),
-                              _buildDrawerItem(
-                                Icons.help,
-                                'Help & Support',
-                                isSmallScreen,
-                              ),
-                              _buildDrawerItem(
-                                Icons.logout,
-                                'Logout',
-                                isSmallScreen,
-                              ),
-                            ],
+                          Expanded(
+                            child: ListView(
+                              padding: EdgeInsets.zero,
+                              children: [
+                                _buildDrawerItem(
+                                    Icons.home, 'Home', isSmallScreen),
+                                _buildDrawerItem(
+                                    Icons.favorite, 'Favorites', isSmallScreen),
+                                _buildDrawerItem(Icons.history, 'Order History',
+                                    isSmallScreen),
+                                _buildDrawerItem(Icons.notifications,
+                                    'Notifications', isSmallScreen),
+                                _buildDrawerItem(
+                                    Icons.settings, 'Settings', isSmallScreen),
+                                _buildDrawerItem(Icons.help, 'Help & Support',
+                                    isSmallScreen),
+                                _buildDrawerItem(
+                                    Icons.logout, 'Logout', isSmallScreen),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -436,7 +495,11 @@ class _HomePageState extends State<HomePage>
       ),
       title: Text(title, style: TextStyle(fontSize: isSmallScreen ? 14 : 16)),
       onTap: () {
-        _toggleDrawer();
+        if (title == 'Logout') {
+          _handleLogout();
+        } else {
+          _toggleDrawer();
+        }
       },
     );
   }
@@ -514,10 +577,9 @@ class _HomePageState extends State<HomePage>
           ],
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              height: isSmallScreen ? 90 : 100,
+              height: isSmallScreen ? 85 : 95,
               decoration: BoxDecoration(
                 color: backgroundColor,
                 borderRadius: const BorderRadius.vertical(
@@ -530,7 +592,7 @@ class _HomePageState extends State<HomePage>
                         top: Radius.circular(12),
                       ),
                       child: Image.network(
-                        'http://test.shoppazing.com${store!.storeUrl}',
+                        'http://test.shoppazing.com/api${store!.storeUrl}',
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           return const Center(
@@ -541,33 +603,42 @@ class _HomePageState extends State<HomePage>
                     )
                   : const Center(child: Icon(Icons.store, size: 40)),
             ),
-            Padding(
-              padding: EdgeInsets.all(isSmallScreen ? 6.0 : 8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    name,
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 12 : 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (store != null)
-                    Row(
-                      children: [
-                        const Icon(Icons.star, size: 14, color: Colors.amber),
-                        const SizedBox(width: 2),
-                        Text(
-                          store.storeRating.toStringAsFixed(1),
-                          style: const TextStyle(fontSize: 10),
+            Expanded(
+              child: Container(
+                padding: EdgeInsets.all(isSmallScreen ? 6.0 : 8.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        name,
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 12 : 14,
+                          fontWeight: FontWeight.bold,
                         ),
-                      ],
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                ],
+                    if (store != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.star,
+                                size: 14, color: Colors.amber),
+                            const SizedBox(width: 2),
+                            Text(
+                              store.storeRating.toStringAsFixed(1),
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ],
