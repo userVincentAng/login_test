@@ -180,57 +180,76 @@ class _SavedAddressesPageState extends State<SavedAddressesPage> {
             horizontal: 16,
             vertical: 8,
           ),
-          child: ListTile(
-            leading: Icon(
-              address.isDefault ? Icons.home : Icons.location_on,
-              color: address.isDefault ? Colors.blue : Colors.grey,
-            ),
-            title: Text(address.label),
-            subtitle: Text(
-              address.fullAddress,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            trailing: PopupMenuButton<String>(
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'select',
-                  child: Text('Select'),
-                ),
-                const PopupMenuItem(
-                  value: 'edit',
-                  child: Text('Edit'),
-                ),
-                if (!address.isDefault)
-                  const PopupMenuItem(
-                    value: 'set_default',
-                    child: Text('Set as Default'),
+          child: InkWell(
+            onTap: () {
+              widget.onAddressSelected(
+                address.coordinates,
+                address.fullAddress,
+              );
+              Navigator.of(context).pop();
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        address.isDefault ? Icons.home : Icons.location_on,
+                        color: address.isDefault ? Colors.blue : Colors.grey,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          address.label,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      PopupMenuButton<String>(
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Text('Edit'),
+                          ),
+                          if (!address.isDefault)
+                            const PopupMenuItem(
+                              value: 'set_default',
+                              child: Text('Set as Default'),
+                            ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Text('Delete'),
+                          ),
+                        ],
+                        onSelected: (value) async {
+                          switch (value) {
+                            case 'edit':
+                              await _editAddress(address);
+                              break;
+                            case 'set_default':
+                              await _setDefaultAddress(address);
+                              break;
+                            case 'delete':
+                              await _deleteAddress(address);
+                              break;
+                          }
+                        },
+                      ),
+                    ],
                   ),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Text('Delete'),
-                ),
-              ],
-              onSelected: (value) async {
-                switch (value) {
-                  case 'select':
-                    widget.onAddressSelected(
-                      address.coordinates,
-                      address.fullAddress,
-                    );
-                    Navigator.pop(context);
-                    break;
-                  case 'edit':
-                    await _editAddress(address);
-                    break;
-                  case 'set_default':
-                    await _setDefaultAddress(address);
-                    break;
-                  case 'delete':
-                    await _deleteAddress(address);
-                    break;
-                }
-              },
+                  const SizedBox(height: 8),
+                  Text(
+                    address.fullAddress,
+                    style: const TextStyle(
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );

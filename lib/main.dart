@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'login_page.dart';
-import 'home_page.dart';
+import 'utils/theme.dart';
+import 'utils/transitions.dart';
+import 'utils/scroll_behavior.dart';
 
 void main() {
   runApp(const MyApp());
@@ -9,16 +11,20 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Log-in Test',
+      title: 'Food Delivery',
       debugShowCheckedModeBanner: false,
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const LoginPage(),
-        '/home': (context) => const HomePage(),
+      theme: AppTheme.lightTheme,
+      scrollBehavior: CustomScrollBehavior(),
+      onGenerateRoute: (settings) {
+        switch (settings.name) {
+          case '/':
+            return CustomPageRoute(child: const LoginPage());
+          default:
+            return CustomPageRoute(child: const LoginPage());
+        }
       },
     );
   }
