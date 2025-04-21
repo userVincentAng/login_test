@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/store.dart';
 import '../models/store_item.dart';
+import '../models/food_item.dart';
 import 'auth_service.dart';
 
 class StoreService {
@@ -192,6 +193,52 @@ class StoreService {
         'items': [],
         'categories': [],
       };
+    }
+  }
+
+  Future<List<FoodItem>> getNearbyFood(int storeId) async {
+    try {
+      print('Fetching nearby food for store ID: $storeId');
+      final response = await http.post(
+        Uri.parse('$baseUrl/GetNearByFood'),
+        headers: AuthService.getAuthHeaders(),
+        body: json.encode({
+          'StoreId': storeId,
+        }),
+      );
+
+      print('Nearby Food API Response status: ${response.statusCode}');
+      print('Nearby Food API Response body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        print('Parsed response data: $data');
+
+        if (data['status_code'] == 200) {
+          if (data['NearByFoodList'] != null) {
+            final foods = (data['NearByFoodList'] as List)
+                .map((food) => FoodItem.fromJson(food))
+                .toList();
+            print('Successfully parsed ${foods.length} food items');
+            return foods;
+          } else {
+            print('No food items found in response');
+            return [];
+          }
+        } else {
+          print('API returned error status: ${data['status_code']}');
+          print('Error message: ${data['message']}');
+          return [];
+        }
+      } else {
+        print('Failed to load nearby food: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        return [];
+      }
+    } catch (e, stackTrace) {
+      print('Error fetching nearby food: $e');
+      print('Stack trace: $stackTrace');
+      return [];
     }
   }
 }

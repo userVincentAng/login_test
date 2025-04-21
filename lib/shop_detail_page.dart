@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'models/store.dart';
 import 'models/store_item.dart';
 import 'services/store_service.dart';
+import 'customize_order.dart';
 
 class ShopDetailPage extends StatefulWidget {
   final Store store;
@@ -275,7 +276,22 @@ class _ShopDetailPageState extends State<ShopDetailPage>
         ),
         child: InkWell(
           onTap: () {
-            // Add item to cart functionality
+            if (item != null) {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => DraggableScrollableSheet(
+                  initialChildSize: 0.7,
+                  minChildSize: 0.5,
+                  maxChildSize: 0.9,
+                  builder: (context, scrollController) => CustomizeOrderPanel(
+                    item: item,
+                    storeId: widget.store.storeId,
+                  ),
+                ),
+              );
+            }
           },
           borderRadius: BorderRadius.circular(12),
           child: Padding(

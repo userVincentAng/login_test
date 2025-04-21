@@ -4,11 +4,13 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:latlong2/latlong.dart';
 import 'shop_detail_page.dart';
 import 'models/store.dart';
+import 'models/food_item.dart';
 import 'services/store_service.dart';
 import 'services/auth_service.dart';
-import 'address_selection_page.dart';
 import 'saved_addresses_page.dart';
 import 'services/address_service.dart';
+import 'services/cart_service.dart';
+import 'cart_page.dart';
 
 //April 15
 class HomePage extends StatefulWidget {
@@ -27,11 +29,18 @@ class _HomePageState extends State<HomePage>
   int _selectedIndex = 0;
   Position? _currentPosition;
   List<Store> _nearbyStores = [];
+  List<Store> _filteredStores = [];
+  List<FoodItem> _nearbyFood = [];
+  List<FoodItem> _filteredFood = [];
   bool _isLoading = true;
+  bool _isFoodLoading = true;
   String _errorMessage = '';
   String _selectedAddress = '';
   final StoreService _storeService = StoreService();
   final AddressService _addressService = AddressService();
+  final TextEditingController _searchController = TextEditingController();
+  final CartService _cartService = CartService();
+  int _cartItemCount = 0;
 
   @override
   void initState() {
@@ -50,12 +59,38 @@ class _HomePageState extends State<HomePage>
     } else {
       _loadDefaultAddress();
     }
+
+    _searchController.addListener(_onSearchChanged);
+    _loadCartCount();
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase();
+
+    setState(() {
+      if (query.isEmpty) {
+        _filteredStores = _nearbyStores;
+        _filteredFood = _nearbyFood;
+      } else {
+        _filteredStores = _nearbyStores.where((store) {
+          final matches = store.name.toLowerCase().contains(query);
+          return matches;
+        }).toList();
+
+        _filteredFood = _nearbyFood.where((food) {
+          final matches = food.name.toLowerCase().contains(query) ||
+              food.storeName.toLowerCase().contains(query);
+          return matches;
+        }).toList();
+      }
+    });
   }
 
   Future<void> _loadDefaultAddress() async {
@@ -82,7 +117,7 @@ class _HomePageState extends State<HomePage>
         _getCurrentLocation();
       }
     } catch (e) {
-      print('Error loading default address: $e');
+      //print('Error loading default address: $e');
       _getCurrentLocation();
     }
   }
@@ -91,7 +126,6 @@ class _HomePageState extends State<HomePage>
     try {
       // Check location permission
       final status = await Permission.location.request();
-      print('📍 Location permission status: $status');
 
       if (status.isGranted) {
         // Get current position
@@ -99,8 +133,7 @@ class _HomePageState extends State<HomePage>
           desiredAccuracy: LocationAccuracy.high,
         );
 
-        print(
-            '📍 Current location: ${position.latitude}, ${position.longitude}');
+        //print('📍 Current location: ${position.latitude}, ${position.longitude}');
 
         setState(() {
           _currentPosition = position;
@@ -109,7 +142,6 @@ class _HomePageState extends State<HomePage>
         // Fetch nearby stores
         await _fetchNearbyStores();
       } else {
-        print('❌ Location permission denied');
         setState(() {
           _errorMessage =
               'Location permission is required to find nearby stores';
@@ -117,7 +149,6 @@ class _HomePageState extends State<HomePage>
         });
       }
     } catch (e) {
-      print('❌ Error getting location: $e');
       setState(() {
         _errorMessage = 'Error getting location: $e';
         _isLoading = false;
@@ -127,12 +158,8 @@ class _HomePageState extends State<HomePage>
 
   Future<void> _fetchNearbyStores() async {
     if (_currentPosition == null) {
-      print('❌ Cannot fetch stores: current position is null');
       return;
     }
-
-    print(
-        '🔍 Fetching stores for location: ${_currentPosition!.latitude}, ${_currentPosition!.longitude}');
 
     try {
       final stores = await _storeService.getNearbyStores(
@@ -140,20 +167,38 @@ class _HomePageState extends State<HomePage>
         lng: _currentPosition!.longitude,
       );
 
-      print('📊 Received ${stores.length} stores from API');
-      for (var store in stores) {
-        print('🏪 Store in list: ${store.name} (${store.storeId})');
-      }
-
       setState(() {
         _nearbyStores = stores;
+        _filteredStores = stores;
         _isLoading = false;
       });
+
+      // Fetch nearby food for the first store
+      if (stores.isNotEmpty) {
+        _fetchNearbyFood(stores.first.storeId);
+      }
     } catch (e) {
-      print('❌ Error fetching stores: $e');
       setState(() {
         _errorMessage = 'Error fetching stores: $e';
         _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _fetchNearbyFood(int storeId) async {
+    try {
+      final foods = await _storeService.getNearbyFood(storeId);
+      foods.forEach((food) => print('   - ${food.name} (₱${food.price})'));
+
+      setState(() {
+        _nearbyFood = foods;
+        _filteredFood = foods;
+        _isFoodLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error fetching nearby food: $e';
+        _isFoodLoading = false;
       });
     }
   }
@@ -235,7 +280,7 @@ class _HomePageState extends State<HomePage>
         }
       }
     } catch (e) {
-      print('Error during logout: $e');
+      //print('Error during logout: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -272,6 +317,13 @@ class _HomePageState extends State<HomePage>
         ),
       ),
     );
+  }
+
+  Future<void> _loadCartCount() async {
+    await _cartService.loadCart();
+    setState(() {
+      _cartItemCount = _cartService.itemCount;
+    });
   }
 
   @override
@@ -328,11 +380,38 @@ class _HomePageState extends State<HomePage>
               _getCurrentLocation();
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.shopping_cart),
-            onPressed: () {
-              // Add cart functionality here
-            },
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.shopping_cart),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const CartPage()),
+                  ).then((_) => _loadCartCount());
+                },
+              ),
+              if (_cartItemCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      _cartItemCount.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
@@ -366,12 +445,21 @@ class _HomePageState extends State<HomePage>
                           ],
                         ),
                         child: TextField(
+                          controller: _searchController,
                           decoration: InputDecoration(
-                            hintText: 'Search Restaurant',
+                            hintText: 'Search Restaurant or Food',
                             prefixIcon: const Icon(
                               Icons.search,
                               color: airforceBlue,
                             ),
+                            suffixIcon: _searchController.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                    },
+                                  )
+                                : null,
                             border: InputBorder.none,
                             contentPadding:
                                 EdgeInsets.all(isSmallScreen ? 12 : 16),
@@ -395,23 +483,51 @@ class _HomePageState extends State<HomePage>
                           ),
                         ),
                       )
-                    else if (_nearbyStores.isEmpty)
+                    else if (_filteredStores.isEmpty)
                       const Center(
                         child: Padding(
                           padding: EdgeInsets.all(16.0),
-                          child: Text('No stores found nearby'),
+                          child: Text('No stores found'),
                         ),
                       )
                     else
                       _buildHorizontalCarousel(
                         context,
-                        _nearbyStores
+                        _filteredStores
                             .map(
                               (store) => _buildStoreCard(
                                 store.name,
                                 Colors.orange[100]!,
                                 isSmallScreen,
                                 store: store,
+                              ),
+                            )
+                            .toList(),
+                      ),
+
+                    // Nearby Food Section
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('Nearby Food', isSmallScreen),
+                    if (_isFoodLoading)
+                      const Center(child: CircularProgressIndicator())
+                    else if (_filteredFood.isEmpty)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Text('No food items found'),
+                        ),
+                      )
+                    else
+                      _buildHorizontalCarousel(
+                        context,
+                        _filteredFood
+                            .map(
+                              (food) => _buildFoodCard(
+                                food.name,
+                                food.price.toStringAsFixed(2),
+                                Colors.green[100]!,
+                                isSmallScreen,
+                                food: food,
                               ),
                             )
                             .toList(),
@@ -703,6 +819,101 @@ class _HomePageState extends State<HomePage>
                               style: const TextStyle(fontSize: 10),
                             ),
                           ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFoodCard(
+    String name,
+    String price,
+    Color backgroundColor,
+    bool isSmallScreen, {
+    FoodItem? food,
+  }) {
+    return InkWell(
+      onTap: () {
+        if (food != null) {
+          // Navigate to food detail page or show bottom sheet
+        }
+      },
+      child: Container(
+        width: isSmallScreen ? 130 : 150,
+        height: isSmallScreen ? 140 : 160,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.2),
+              spreadRadius: 1,
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              height: isSmallScreen ? 85 : 95,
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12),
+                ),
+              ),
+              child: food?.imgUrl.isNotEmpty == true
+                  ? ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(12),
+                      ),
+                      child: Image.network(
+                        'http://test.shoppazing.com/api${food!.imgUrl}',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Center(
+                            child: Icon(Icons.fastfood, size: 40),
+                          );
+                        },
+                      ),
+                    )
+                  : const Center(child: Icon(Icons.fastfood, size: 40)),
+            ),
+            Expanded(
+              child: Container(
+                padding: EdgeInsets.all(isSmallScreen ? 6.0 : 8.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        name,
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 12 : 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (food != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          '₱$price',
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 10 : 12,
+                            color: Colors.green[700],
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                   ],

@@ -60,7 +60,6 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      print('Checking if mobile number is registered...');
       final checkResponse = await http.post(
         Uri.parse('http://test.shoppazing.com/api/shop/registeruser'),
         headers: AuthService.getAuthHeaders(),
@@ -74,16 +73,12 @@ class _LoginPageState extends State<LoginPage> {
         }),
       );
 
-      print('Mobile check response status code: ${checkResponse.statusCode}');
-      print('Mobile check response body: ${checkResponse.body}');
-
       // Parse the response body to check the status_code
       final checkData = jsonDecode(checkResponse.body);
       final statusCode = checkData['status_code'];
       final message = checkData['message'];
 
       // Send OTP using loginbyotp endpoint
-      print('Sending OTP using loginbyotp endpoint...');
       final response = await http.post(
         Uri.parse('http://test.shoppazing.com/api/shop/loginbyotp'),
         headers: AuthService.getAuthHeaders(),
@@ -93,9 +88,6 @@ class _LoginPageState extends State<LoginPage> {
           'AppHash': 'h234shsw',
         }),
       );
-
-      print('OTP response status code: ${response.statusCode}');
-      print('OTP response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
@@ -130,7 +122,6 @@ class _LoginPageState extends State<LoginPage> {
         throw Exception('Failed to send OTP');
       }
     } on SocketException catch (e) {
-      print('Network error: $e');
       setState(() {
         _errorMessage = 'Network error. Please check your internet connection.';
       });
@@ -143,7 +134,6 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
     } catch (e) {
-      print('Error sending OTP: $e');
       if (!mounted) return;
       setState(() {
         _errorMessage = 'An error occurred. Please try again.';
@@ -171,16 +161,12 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      print('Attempting to login...');
       final loginResponse = await http.post(
         Uri.parse('http://test.shoppazing.com/api/token'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body:
             'grant_type=password&username=${_emailController.text}&password=${_passwordController.text}',
       );
-
-      print('Login response status code: ${loginResponse.statusCode}');
-      print('Login response body: ${loginResponse.body}');
 
       if (loginResponse.statusCode == 200) {
         // Login successful
@@ -204,7 +190,6 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     } catch (e) {
-      print('Error during login: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
