@@ -21,7 +21,7 @@ class AddressSelectionPage extends StatefulWidget {
 }
 
 class _AddressSelectionPageState extends State<AddressSelectionPage> {
-  final MapController _mapController = MapController();
+  MapController? _mapController;
   LatLng? _selectedLocation;
   String _selectedAddress = '';
   bool _isLoading = true;
@@ -39,6 +39,7 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _mapController?.dispose();
     super.dispose();
   }
 
@@ -81,6 +82,8 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
   }
 
   void _selectSearchResult(Map<String, dynamic> result) {
+    if (!mounted) return;
+
     final latLng = LatLng(result['lat'], result['lon']);
     setState(() {
       _selectedLocation = latLng;
@@ -88,7 +91,13 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
       _searchResults = [];
       _searchController.clear();
     });
-    _mapController.move(latLng, 15);
+
+    // Schedule the map movement for the next frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _mapController != null) {
+        _mapController!.move(latLng, 15);
+      }
+    });
   }
 
   Future<void> _initializeMap() async {
@@ -124,16 +133,17 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
 
   Future<void> _getAddressFromLatLng(LatLng position) async {
     try {
-      // Using OpenStreetMap Nominatim API for reverse geocoding
       final response = await http.get(Uri.parse(
           'https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.latitude}&lon=${position.longitude}&zoom=18&addressdetails=1'));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final address = data['display_name'] as String;
-        setState(() {
-          _selectedAddress = address;
-        });
+        if (mounted) {
+          setState(() {
+            _selectedAddress = address;
+          });
+        }
       }
     } catch (e) {
       print('Error getting address: $e');
@@ -149,8 +159,8 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
           IconButton(
             icon: const Icon(Icons.my_location),
             onPressed: () {
-              if (_selectedLocation != null) {
-                _mapController.move(_selectedLocation!, 15);
+              if (_selectedLocation != null && _mapController != null) {
+                _mapController!.move(_selectedLocation!, 15);
               }
             },
           ),
