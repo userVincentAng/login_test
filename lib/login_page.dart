@@ -60,28 +60,13 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      final checkResponse = await http.post(
-        Uri.parse('http://test.shoppazing.com/api/shop/registeruser'),
-        headers: AuthService.getAuthHeaders(),
-        body: jsonEncode({
-          'Email': '',
-          'Firstname': '',
-          'Lastname': '',
-          'MobileNo': _mobileController.text,
-          'Password': '',
-          'RoleName': 'User',
-        }),
-      );
-
-      // Parse the response body to check the status_code
-      final checkData = jsonDecode(checkResponse.body);
-      final statusCode = checkData['status_code'];
-      final message = checkData['message'];
-
-      // Send OTP using loginbyotp endpoint
+      // Send OTP using loginbyotp endpoint with fallback token
       final response = await http.post(
         Uri.parse('http://test.shoppazing.com/api/shop/loginbyotp'),
-        headers: AuthService.getAuthHeaders(),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${AuthService.accessToken}',
+        },
         body: jsonEncode({
           'UserId': '',
           'MobileNo': _mobileController.text,
@@ -92,23 +77,13 @@ class _LoginPageState extends State<LoginPage> {
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
 
-        // Show appropriate message based on registration status
-        if (statusCode == 1 && message == "Mobile No exist") {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('OTP sent successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                  'Mobile number not registered. Please complete registration after OTP verification.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('OTP sent successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
 
         // Navigate to OTP verification page
         Navigator.push(
@@ -169,7 +144,10 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (loginResponse.statusCode == 200) {
-        // Login successful
+        // Parse the response and save user session
+        final responseData = jsonDecode(loginResponse.body);
+        await AuthService.saveUserSession(responseData);
+
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
