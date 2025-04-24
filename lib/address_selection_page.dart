@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AddressSelectionPage extends StatefulWidget {
   final Position? initialPosition;
-  final Function(LatLng, String) onAddressSelected;
+  final Future<void> Function(LatLng, String) onAddressSelected;
 
   const AddressSelectionPage({
     super.key,
@@ -21,7 +22,7 @@ class AddressSelectionPage extends StatefulWidget {
 }
 
 class _AddressSelectionPageState extends State<AddressSelectionPage> {
-  MapController? _mapController;
+  GoogleMapController? _mapController;
   LatLng? _selectedLocation;
   String _selectedAddress = '';
   bool _isLoading = true;
@@ -29,6 +30,9 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _searchResults = [];
   bool _isSearching = false;
+  final String _apiKey = 'AIzaSyC8qxLFU-_pwQlCwGR-S_HBUB0dv792oiU';
+
+  bool get _isWindows => !kIsWeb && Platform.isWindows;
 
   @override
   void initState() {
@@ -58,20 +62,17 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
 
     try {
       final response = await http.get(Uri.parse(
-          'https://nominatim.openstreetmap.org/search?format=json&q=$query&limit=5'));
+          'https://maps.googleapis.com/maps/api/place/autocomplete/json?input=$query&key=$_apiKey&types=address'));
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        setState(() {
-          _searchResults = data
-              .map((item) => {
-                    'display_name': item['display_name'],
-                    'lat': double.parse(item['lat']),
-                    'lon': double.parse(item['lon']),
-                  })
-              .toList();
-          _isSearching = false;
-        });
+        final data = json.decode(response.body);
+        if (data['status'] == 'OK') {
+          setState(() {
+            _searchResults =
+                List<Map<String, dynamic>>.from(data['predictions']);
+            _isSearching = false;
+          });
+        }
       }
     } catch (e) {
       print('Error searching location: $e');
@@ -81,23 +82,35 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
     }
   }
 
-  void _selectSearchResult(Map<String, dynamic> result) {
-    if (!mounted) return;
+  Future<void> _selectSearchResult(Map<String, dynamic> result) async {
+    try {
+      final response = await http.get(Uri.parse(
+          'https://maps.googleapis.com/maps/api/place/details/json?place_id=${result['place_id']}&key=$_apiKey'));
 
-    final latLng = LatLng(result['lat'], result['lon']);
-    setState(() {
-      _selectedLocation = latLng;
-      _selectedAddress = result['display_name'];
-      _searchResults = [];
-      _searchController.clear();
-    });
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'OK') {
+          final location = data['result']['geometry']['location'];
+          final latLng = LatLng(location['lat'], location['lng']);
+          final address = data['result']['formatted_address'];
 
-    // Schedule the map movement for the next frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _mapController != null) {
-        _mapController!.move(latLng, 15);
+          setState(() {
+            _selectedLocation = latLng;
+            _selectedAddress = address;
+            _searchResults = [];
+            _searchController.clear();
+          });
+
+          if (!_isWindows) {
+            _mapController?.animateCamera(
+              CameraUpdate.newLatLngZoom(latLng, 15),
+            );
+          }
+        }
       }
-    });
+    } catch (e) {
+      print('Error getting place details: $e');
+    }
   }
 
   Future<void> _initializeMap() async {
@@ -134,15 +147,17 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
   Future<void> _getAddressFromLatLng(LatLng position) async {
     try {
       final response = await http.get(Uri.parse(
-          'https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.latitude}&lon=${position.longitude}&zoom=18&addressdetails=1'));
+          'https://maps.googleapis.com/maps/api/geocode/json?latlng=${position.latitude},${position.longitude}&key=$_apiKey'));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final address = data['display_name'] as String;
-        if (mounted) {
-          setState(() {
-            _selectedAddress = address;
-          });
+        if (data['status'] == 'OK' && data['results'].isNotEmpty) {
+          final address = data['results'][0]['formatted_address'];
+          if (mounted) {
+            setState(() {
+              _selectedAddress = address;
+            });
+          }
         }
       }
     } catch (e) {
@@ -159,8 +174,10 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
           IconButton(
             icon: const Icon(Icons.my_location),
             onPressed: () {
-              if (_selectedLocation != null && _mapController != null) {
-                _mapController!.move(_selectedLocation!, 15);
+              if (_selectedLocation != null && !_isWindows) {
+                _mapController?.animateCamera(
+                  CameraUpdate.newLatLngZoom(_selectedLocation!, 15),
+                );
               }
             },
           ),
@@ -210,7 +227,7 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
                             final result = _searchResults[index];
                             return ListTile(
                               leading: const Icon(Icons.location_on),
-                              title: Text(result['display_name']),
+                              title: Text(result['description'] ?? ''),
                               onTap: () => _selectSearchResult(result),
                             );
                           },
@@ -220,89 +237,84 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
                       Expanded(
                         child: Stack(
                           children: [
-                            FlutterMap(
-                              mapController: _mapController,
-                              options: MapOptions(
-                                initialCenter: _selectedLocation!,
-                                initialZoom: 15,
-                                onTap: (_, position) {
+                            if (_isWindows)
+                              Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.map,
+                                      size: 64,
+                                      color: Colors.grey,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    const Text(
+                                      'Map view is not available on Windows',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Selected Location:',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _selectedAddress.isEmpty
+                                          ? 'No location selected'
+                                          : _selectedAddress,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              GoogleMap(
+                                initialCameraPosition: CameraPosition(
+                                  target: _selectedLocation!,
+                                  zoom: 15,
+                                ),
+                                onMapCreated: (controller) {
+                                  _mapController = controller;
+                                },
+                                onTap: (position) {
                                   setState(() {
                                     _selectedLocation = position;
                                   });
                                   _getAddressFromLatLng(position);
                                 },
-                              ),
-                              children: [
-                                TileLayer(
-                                  urlTemplate:
-                                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                  userAgentPackageName:
-                                      'com.example.login_test',
-                                ),
-                                if (_selectedLocation != null)
-                                  MarkerLayer(
-                                    markers: [
-                                      Marker(
-                                        point: _selectedLocation!,
-                                        width: 40,
-                                        height: 40,
-                                        child: const Icon(
-                                          Icons.location_on,
-                                          color: Colors.red,
-                                          size: 40,
+                                myLocationEnabled: true,
+                                myLocationButtonEnabled: false,
+                                markers: _selectedLocation != null
+                                    ? {
+                                        Marker(
+                                          markerId: const MarkerId(
+                                              'selected_location'),
+                                          position: _selectedLocation!,
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                              ],
-                            ),
+                                      }
+                                    : {},
+                              ),
                             Positioned(
                               bottom: 16,
                               left: 16,
                               right: 16,
-                              child: Card(
-                                elevation: 4,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Selected Address:',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        _selectedAddress.isEmpty
-                                            ? 'Tap on the map to select location'
-                                            : _selectedAddress,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodyLarge,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      SizedBox(
-                                        width: double.infinity,
-                                        child: ElevatedButton(
-                                          onPressed: _selectedLocation != null
-                                              ? () {
-                                                  widget.onAddressSelected(
-                                                    _selectedLocation!,
-                                                    _selectedAddress,
-                                                  );
-                                                  Navigator.pop(context);
-                                                }
-                                              : null,
-                                          child: const Text('Confirm Location'),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                              child: ElevatedButton(
+                                onPressed: _selectedLocation != null
+                                    ? () {
+                                        widget.onAddressSelected(
+                                            _selectedLocation!,
+                                            _selectedAddress);
+                                        Navigator.pop(context);
+                                      }
+                                    : null,
+                                child: const Text('Select Location'),
                               ),
                             ),
                           ],

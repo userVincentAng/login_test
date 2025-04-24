@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'models/address.dart';
 import 'services/address_service.dart';
 import 'address_selection_page.dart';
 
 class SavedAddressesPage extends StatefulWidget {
-  final Function(LatLng, String) onAddressSelected;
+  final void Function(LatLng, String) onAddressSelected;
 
   const SavedAddressesPage({
     super.key,
