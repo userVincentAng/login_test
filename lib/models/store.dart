@@ -33,14 +33,39 @@ class Store {
       lat: json['Lat'],
       lng: json['Lng'],
       storeRating: json['StoreRating'] ?? 0.0,
-      storeHours:
-          (json['StoreHours'] as List?)
-              ?.map((e) => StoreHours.fromJson(e))
+      storeHours: (json['StoreHours'] as List?)
+              ?.map((hours) => StoreHours.fromJson(hours))
               .toList() ??
           [],
       isStoreOnline: json['IsStoreOnline'] ?? false,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'StoreId': storeId,
+      'Name': name,
+      'AddressLine1': addressLine1,
+      'AddressLine2': addressLine2,
+      'StoreUrl': storeUrl,
+      'Lat': lat,
+      'Lng': lng,
+      'StoreRating': storeRating,
+      'StoreHours': storeHours.map((hours) => hours.toJson()).toList(),
+      'IsStoreOnline': isStoreOnline,
+    };
+  }
+
+  // Helper getters for UI
+  String get address =>
+      addressLine2 != null ? '$addressLine1, $addressLine2' : addressLine1;
+  String get imageUrl => storeUrl;
+  double get rating => storeRating;
+  int get reviewCount => 0; // This should be fetched from the API
+  double get distance =>
+      0.0; // This should be calculated based on user's location
+  bool get isOpen => isStoreOnline;
+  List<String> get categories => []; // This should be fetched from the API
 }
 
 class StoreHours {
@@ -72,5 +97,17 @@ class StoreHours {
       isEnabled: json['IsEnabled'],
       isWholeDay: json['IsWholeDay'],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'Id': id,
+      'StoreId': storeId,
+      'DayOfWeek': dayOfWeek,
+      'StartTime': startTime,
+      'EndTime': endTime,
+      'IsEnabled': isEnabled,
+      'IsWholeDay': isWholeDay,
+    };
   }
 }

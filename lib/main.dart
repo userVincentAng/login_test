@@ -10,7 +10,7 @@ import 'services/auth_service.dart';
 void main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
-    
+
     // Load the user session
     final isLoggedIn = await AuthService.loadUserSession();
 
@@ -36,7 +36,26 @@ void main() async {
       MaterialApp(
         home: Scaffold(
           body: Center(
-            child: Text('Error initializing app: $e'),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Error initializing app',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    e.toString(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -62,12 +81,32 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const HomePage(),
       },
       builder: (context, child) {
-        // Add error boundary
-        return ErrorWidget.builder = (FlutterErrorDetails details) {
+        ErrorWidget.builder = (FlutterErrorDetails details) {
           return MaterialApp(
             home: Scaffold(
               body: Center(
-                child: Text('An error occurred: ${details.exception}'),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline,
+                          size: 48, color: Colors.red),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'An error occurred',
+                        style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        details.exception.toString(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           );

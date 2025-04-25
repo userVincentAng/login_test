@@ -154,7 +154,7 @@ class _ShopDetailPageState extends State<ShopDetailPage>
                     colors: [airforceBlue, airforceBlue.withOpacity(0.8)],
                   ),
                 ),
-                child: widget.store.storeUrl != null
+                child: widget.store.storeUrl.isNotEmpty
                     ? Image.network(
                         'http://test.shoppazing.com/api${widget.store.storeUrl}',
                         fit: BoxFit.cover,

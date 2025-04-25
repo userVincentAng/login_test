@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'shop_detail_page.dart';
 import 'models/store.dart';
 import 'models/food_item.dart';
+import 'models/address.dart';
 import 'services/store_service.dart';
 import 'services/auth_service.dart';
 import 'saved_addresses_page.dart';
@@ -118,13 +119,13 @@ class _HomePageState extends State<HomePage>
           _selectedAddress = defaultAddress.fullAddress;
           _selectedAddressObject = defaultAddress;
         });
-        _fetchNearbyStores();
+        await _fetchNearbyStores();
       } else {
-        _getCurrentLocation();
+        await _getCurrentLocation();
       }
     } catch (e) {
-      //print('Error loading default address: $e');
-      _getCurrentLocation();
+      debugPrint('Error loading default address: $e');
+      await _getCurrentLocation();
     }
   }
 
@@ -137,10 +138,9 @@ class _HomePageState extends State<HomePage>
         // Get current position
         final position = await LocationUtils.getCurrentPosition();
 
-        //print('📍 Current location: ${position.latitude}, ${position.longitude}');
-
         setState(() {
           _currentPosition = position;
+          _errorMessage = '';
         });
 
         // Fetch nearby stores
@@ -162,10 +162,19 @@ class _HomePageState extends State<HomePage>
 
   Future<void> _fetchNearbyStores() async {
     if (_currentPosition == null) {
+      setState(() {
+        _errorMessage = 'Location not available';
+        _isLoading = false;
+      });
       return;
     }
 
     try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = '';
+      });
+
       final stores = await _storeService.getNearbyStores(
         lat: _currentPosition!.latitude,
         lng: _currentPosition!.longitude,
@@ -179,7 +188,7 @@ class _HomePageState extends State<HomePage>
 
       // Fetch nearby food for the first store
       if (stores.isNotEmpty) {
-        _fetchNearbyFood(stores.first.storeId);
+        await _fetchNearbyFood(stores.first.storeId);
       }
     } catch (e) {
       setState(() {
@@ -191,8 +200,12 @@ class _HomePageState extends State<HomePage>
 
   Future<void> _fetchNearbyFood(int storeId) async {
     try {
+      setState(() {
+        _isFoodLoading = true;
+        _errorMessage = '';
+      });
+
       final foods = await _storeService.getNearbyFood(storeId);
-      foods.forEach((food) => print('   - ${food.name} (₱${food.price})'));
 
       setState(() {
         _nearbyFood = foods;
@@ -315,10 +328,7 @@ class _HomePageState extends State<HomePage>
                 headingAccuracy: 0,
               );
               _selectedAddress = address;
-              _selectedAddressObject = Address(
-                coordinates: Coordinates(position.latitude, position.longitude),
-                fullAddress: address,
-              );
+              _selectedAddressObject = Address.fromLatLng(position, address);
             });
             _fetchNearbyStores();
           },
@@ -778,7 +788,7 @@ class _HomePageState extends State<HomePage>
                   top: Radius.circular(12),
                 ),
               ),
-              child: store?.storeUrl != null
+              child: store?.storeUrl.isNotEmpty == true
                   ? ClipRRect(
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(12),

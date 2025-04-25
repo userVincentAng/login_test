@@ -48,12 +48,7 @@ class _SavedAddressesPageState extends State<SavedAddressesPage> {
       MaterialPageRoute(
         builder: (context) => AddressSelectionPage(
           onAddressSelected: (LatLng position, String address) async {
-            final newAddress = Address(
-              id: DateTime.now().millisecondsSinceEpoch.toString(),
-              fullAddress: address,
-              label: 'Home',
-              coordinates: position,
-            );
+            final newAddress = Address.fromLatLng(position, address);
             await _addressService.addAddress(newAddress);
             await _loadAddresses();
           },
@@ -82,7 +77,7 @@ class _SavedAddressesPageState extends State<SavedAddressesPage> {
           onAddressSelected: (LatLng position, String newAddress) async {
             final updatedAddress = address.copyWith(
               fullAddress: newAddress,
-              coordinates: position,
+              coordinates: Coordinates.fromLatLng(position),
             );
             await _addressService.updateAddress(updatedAddress);
             await _loadAddresses();
@@ -183,7 +178,7 @@ class _SavedAddressesPageState extends State<SavedAddressesPage> {
           child: InkWell(
             onTap: () {
               widget.onAddressSelected(
-                address.coordinates,
+                address.coordinates.toLatLng(),
                 address.fullAddress,
               );
               Navigator.of(context).pop();
