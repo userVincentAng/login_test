@@ -4,9 +4,12 @@ import 'package:geolocator/geolocator.dart';
 import 'models/address.dart';
 import 'services/address_service.dart';
 import 'address_selection_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class SavedAddressesPage extends StatefulWidget {
-  final void Function(LatLng, String) onAddressSelected;
+  final Future<void> Function(LatLng, String, String, String, String)
+      onAddressSelected;
 
   const SavedAddressesPage({
     super.key,
@@ -18,54 +21,84 @@ class SavedAddressesPage extends StatefulWidget {
 }
 
 class _SavedAddressesPageState extends State<SavedAddressesPage> {
-  final AddressService _addressService = AddressService();
-  List<Address> _addresses = [];
+  List<Map<String, dynamic>> _savedAddresses = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadAddresses();
+    _loadSavedAddresses();
   }
 
-  Future<void> _loadAddresses() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadSavedAddresses() async {
     try {
-      final addresses = await _addressService.getAllAddresses();
+      final prefs = await SharedPreferences.getInstance();
+      final addressesJson = prefs.getStringList('saved_addresses') ?? [];
       setState(() {
-        _addresses = addresses;
+        _savedAddresses = addressesJson
+            .map((json) => Map<String, dynamic>.from(jsonDecode(json)))
+            .toList();
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading addresses: $e');
-      setState(() => _isLoading = false);
+      print('Error loading saved addresses: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _saveAddresses() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final addressesJson =
+          _savedAddresses.map((address) => jsonEncode(address)).toList();
+      await prefs.setStringList('saved_addresses', addressesJson);
+      debugPrint(
+          'Addresses saved successfully: ${_savedAddresses.length} addresses');
+    } catch (e) {
+      debugPrint('Error saving addresses: $e');
     }
   }
 
   Future<void> _addNewAddress() async {
-    await Navigator.push(
+    final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
         builder: (context) => AddressSelectionPage(
-          onAddressSelected: (LatLng position, String address) async {
-            final newAddress = Address.fromLatLng(position, address);
-            await _addressService.addAddress(newAddress);
-            await _loadAddresses();
+          onAddressSelected:
+              (latLng, address, floorUnit, instructions, label) async {
+            final newAddress = {
+              'lat': latLng.latitude,
+              'lng': latLng.longitude,
+              'address': address,
+              'floorUnit': floorUnit,
+              'instructions': instructions,
+              'label': label,
+              'timestamp': DateTime.now().millisecondsSinceEpoch,
+            };
+            setState(() {
+              _savedAddresses.add(newAddress);
+            });
+            await _saveAddresses();
+            return Future.value(newAddress);
           },
         ),
       ),
     );
   }
 
-  Future<void> _editAddress(Address address) async {
-    await Navigator.push(
+  Future<void> _editAddress(int index) async {
+    final address = _savedAddresses[index];
+    final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
         builder: (context) => AddressSelectionPage(
           initialPosition: Position(
-            latitude: address.coordinates.latitude,
-            longitude: address.coordinates.longitude,
-            timestamp: DateTime.now(),
+            latitude: address['lat'],
+            longitude: address['lng'],
+            timestamp:
+                DateTime.fromMillisecondsSinceEpoch(address['timestamp']),
             accuracy: 0,
             altitude: 0,
             heading: 0,
@@ -74,25 +107,34 @@ class _SavedAddressesPageState extends State<SavedAddressesPage> {
             altitudeAccuracy: 0,
             headingAccuracy: 0,
           ),
-          onAddressSelected: (LatLng position, String newAddress) async {
-            final updatedAddress = address.copyWith(
-              fullAddress: newAddress,
-              coordinates: Coordinates.fromLatLng(position),
-            );
-            await _addressService.updateAddress(updatedAddress);
-            await _loadAddresses();
+          onAddressSelected:
+              (latLng, newAddress, floorUnit, instructions, label) async {
+            final updatedAddress = {
+              'lat': latLng.latitude,
+              'lng': latLng.longitude,
+              'address': newAddress,
+              'floorUnit': floorUnit,
+              'instructions': instructions,
+              'label': label,
+              'timestamp': DateTime.now().millisecondsSinceEpoch,
+            };
+            setState(() {
+              _savedAddresses[index] = updatedAddress;
+            });
+            await _saveAddresses();
+            return Future.value(updatedAddress);
           },
         ),
       ),
     );
   }
 
-  Future<void> _deleteAddress(Address address) async {
+  Future<void> _deleteAddress(int index) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Address'),
-        content: Text('Are you sure you want to delete ${address.label}?'),
+        content: const Text('Are you sure you want to delete this address?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -107,14 +149,24 @@ class _SavedAddressesPageState extends State<SavedAddressesPage> {
     );
 
     if (confirmed == true) {
-      await _addressService.deleteAddress(address.id);
-      await _loadAddresses();
+      setState(() {
+        _savedAddresses.removeAt(index);
+      });
+      await _saveAddresses();
     }
   }
 
-  Future<void> _setDefaultAddress(Address address) async {
-    await _addressService.setDefaultAddress(address.id);
-    await _loadAddresses();
+  IconData _getLabelIcon(String label) {
+    switch (label.toLowerCase()) {
+      case 'home':
+        return Icons.home;
+      case 'work':
+        return Icons.work;
+      case 'partner':
+        return Icons.favorite;
+      default:
+        return Icons.location_on;
+    }
   }
 
   @override
@@ -131,124 +183,79 @@ class _SavedAddressesPageState extends State<SavedAddressesPage> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _addresses.isEmpty
-              ? _buildEmptyState()
-              : _buildAddressList(),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.location_off,
-            size: 64,
-            color: Colors.grey,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'No saved addresses',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 8),
-          ElevatedButton(
-            onPressed: _addNewAddress,
-            child: const Text('Add New Address'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAddressList() {
-    return ListView.builder(
-      itemCount: _addresses.length,
-      itemBuilder: (context, index) {
-        final address = _addresses[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 8,
-          ),
-          child: InkWell(
-            onTap: () {
-              widget.onAddressSelected(
-                address.coordinates.toLatLng(),
-                address.fullAddress,
-              );
-              Navigator.of(context).pop();
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+          : _savedAddresses.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        address.isDefault ? Icons.home : Icons.location_on,
-                        color: address.isDefault ? Colors.blue : Colors.grey,
+                      const Icon(
+                        Icons.location_off,
+                        size: 64,
+                        color: Colors.grey,
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          address.label,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'No saved addresses',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey,
                         ),
                       ),
-                      PopupMenuButton<String>(
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Text('Edit'),
-                          ),
-                          if (!address.isDefault)
-                            const PopupMenuItem(
-                              value: 'set_default',
-                              child: Text('Set as Default'),
-                            ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Text('Delete'),
-                          ),
-                        ],
-                        onSelected: (value) async {
-                          switch (value) {
-                            case 'edit':
-                              await _editAddress(address);
-                              break;
-                            case 'set_default':
-                              await _setDefaultAddress(address);
-                              break;
-                            case 'delete':
-                              await _deleteAddress(address);
-                              break;
-                          }
-                        },
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: _addNewAddress,
+                        child: const Text('Add New Address'),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    address.fullAddress,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+                )
+              : ListView.builder(
+                  itemCount: _savedAddresses.length,
+                  itemBuilder: (context, index) {
+                    final address = _savedAddresses[index];
+                    return ListTile(
+                      leading: Icon(_getLabelIcon(address['label'])),
+                      title: Text(address['label']),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(address['address']),
+                          if (address['floorUnit']?.isNotEmpty == true)
+                            Text('${address['floorUnit']}'),
+                          if (address['instructions']?.isNotEmpty == true)
+                            Text(
+                              'Note: ${address['instructions']}',
+                              style:
+                                  const TextStyle(fontStyle: FontStyle.italic),
+                            ),
+                        ],
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit),
+                            onPressed: () => _editAddress(index),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () => _deleteAddress(index),
+                          ),
+                        ],
+                      ),
+                      onTap: () {
+                        widget.onAddressSelected(
+                          LatLng(address['lat'], address['lng']),
+                          address['address'],
+                          address['floorUnit'] ?? '',
+                          address['instructions'] ?? '',
+                          address['label'],
+                        );
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
     );
   }
 }

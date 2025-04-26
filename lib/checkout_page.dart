@@ -51,12 +51,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => SavedAddressesPage(
-                          onAddressSelected:
-                              (LatLng coordinates, String address) {
+                          onAddressSelected: (latLng, address, floorUnit,
+                              instructions, label) async {
                             setState(() {
                               _selectedAddress = address;
-                              _selectedCoordinates = coordinates;
+                              _selectedCoordinates = latLng;
                             });
+                            Navigator.pop(context);
                           },
                         ),
                       ),

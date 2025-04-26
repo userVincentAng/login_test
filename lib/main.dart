@@ -74,7 +74,6 @@ class MyApp extends StatelessWidget {
       title: 'Food Delivery',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      scrollBehavior: CustomScrollBehavior(),
       initialRoute: isLoggedIn ? '/home' : '/',
       routes: {
         '/': (context) => const LoginPage(),

@@ -9,7 +9,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AddressSelectionPage extends StatefulWidget {
   final Position? initialPosition;
-  final Future<void> Function(LatLng, String) onAddressSelected;
+  final Future<void> Function(LatLng, String, String, String, String)
+      onAddressSelected;
 
   const AddressSelectionPage({
     super.key,
@@ -28,8 +29,13 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
   bool _isLoading = true;
   String _errorMessage = '';
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _floorUnitController = TextEditingController();
+  final TextEditingController _deliveryInstructionsController =
+      TextEditingController();
+  final TextEditingController _labelController = TextEditingController();
   List<Map<String, dynamic>> _searchResults = [];
   bool _isSearching = false;
+  String _selectedLabelType = 'Home';
   final String _apiKey = 'AIzaSyC8qxLFU-_pwQlCwGR-S_HBUB0dv792oiU';
 
   bool get _isWindows => !kIsWeb && Platform.isWindows;
@@ -43,6 +49,9 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _floorUnitController.dispose();
+    _deliveryInstructionsController.dispose();
+    _labelController.dispose();
     _mapController?.dispose();
     super.dispose();
   }
@@ -101,15 +110,38 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
             _searchController.clear();
           });
 
-          if (!_isWindows) {
-            _mapController?.animateCamera(
-              CameraUpdate.newLatLngZoom(latLng, 15),
-            );
+          if (!_isWindows && _mapController != null) {
+            await Future.delayed(const Duration(milliseconds: 100));
+            try {
+              await _mapController!.animateCamera(
+                CameraUpdate.newLatLngZoom(latLng, 15),
+              );
+            } catch (e) {
+              debugPrint('Error animating camera: $e');
+              try {
+                await _mapController!.moveCamera(
+                  CameraUpdate.newLatLng(latLng),
+                );
+              } catch (e) {
+                debugPrint('Error moving camera: $e');
+                setState(() {
+                  _selectedLocation = latLng;
+                });
+              }
+            }
           }
         }
       }
     } catch (e) {
-      print('Error getting place details: $e');
+      debugPrint('Error getting place details: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error selecting location: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -165,6 +197,130 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
     }
   }
 
+  void _showAddressDetailsSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Add Address Details',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _floorUnitController,
+                  decoration: const InputDecoration(
+                    labelText: 'Floor/Unit/Room #',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _deliveryInstructionsController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Delivery Instructions (Note to rider)',
+                    hintText: 'e.g., Landmark, gate code, etc.',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Add Label',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    _buildLabelChip('Home', Icons.home),
+                    _buildLabelChip('Work', Icons.work),
+                    _buildLabelChip('Partner', Icons.favorite),
+                    _buildLabelChip('Other', Icons.more_horiz),
+                  ],
+                ),
+                if (_selectedLabelType == 'Other') ...[
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _labelController,
+                    decoration: const InputDecoration(
+                      labelText: 'Custom Label',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    final addressDetails = {
+                      'floorUnit': _floorUnitController.text,
+                      'deliveryInstructions':
+                          _deliveryInstructionsController.text,
+                      'label': _selectedLabelType == 'Other'
+                          ? _labelController.text
+                          : _selectedLabelType,
+                    };
+                    widget.onAddressSelected(
+                      _selectedLocation!,
+                      _selectedAddress,
+                      _floorUnitController.text,
+                      _deliveryInstructionsController.text,
+                      _selectedLabelType == 'Other'
+                          ? _labelController.text
+                          : _selectedLabelType,
+                    );
+                    Navigator.pop(context); // Close bottom sheet
+                    Navigator.pop(context); // Close address selection page
+                  },
+                  child: const Text('Save Address'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLabelChip(String label, IconData icon) {
+    final isSelected = _selectedLabelType == label;
+    return FilterChip(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 4),
+          Text(label),
+        ],
+      ),
+      selected: isSelected,
+      onSelected: (selected) {
+        setState(() {
+          _selectedLabelType = label;
+        });
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -173,11 +329,24 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.my_location),
-            onPressed: () {
-              if (_selectedLocation != null && !_isWindows) {
-                _mapController?.animateCamera(
-                  CameraUpdate.newLatLngZoom(_selectedLocation!, 15),
-                );
+            onPressed: () async {
+              if (_selectedLocation != null &&
+                  !_isWindows &&
+                  _mapController != null) {
+                try {
+                  await _mapController!.animateCamera(
+                    CameraUpdate.newLatLngZoom(_selectedLocation!, 15),
+                  );
+                } catch (e) {
+                  debugPrint('Error centering on location: $e');
+                  try {
+                    await _mapController!.moveCamera(
+                      CameraUpdate.newLatLng(_selectedLocation!),
+                    );
+                  } catch (e) {
+                    debugPrint('Error moving to location: $e');
+                  }
+                }
               }
             },
           ),
@@ -281,7 +450,9 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
                                   zoom: 15,
                                 ),
                                 onMapCreated: (controller) {
-                                  _mapController = controller;
+                                  setState(() {
+                                    _mapController = controller;
+                                  });
                                 },
                                 onTap: (position) {
                                   setState(() {
@@ -300,6 +471,14 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
                                         ),
                                       }
                                     : {},
+                                zoomControlsEnabled: false,
+                                mapToolbarEnabled: false,
+                                indoorViewEnabled: false,
+                                trafficEnabled: false,
+                                buildingsEnabled: false,
+                                compassEnabled: false,
+                                rotateGesturesEnabled: false,
+                                tiltGesturesEnabled: false,
                               ),
                             Positioned(
                               bottom: 16,
@@ -308,10 +487,7 @@ class _AddressSelectionPageState extends State<AddressSelectionPage> {
                               child: ElevatedButton(
                                 onPressed: _selectedLocation != null
                                     ? () {
-                                        widget.onAddressSelected(
-                                            _selectedLocation!,
-                                            _selectedAddress);
-                                        Navigator.pop(context);
+                                        _showAddressDetailsSheet();
                                       }
                                     : null,
                                 child: const Text('Select Location'),

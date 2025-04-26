@@ -1,5 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class AuthService {
   static const String _baseUrl = 'http://test.shoppazing.com/api';
@@ -7,7 +8,7 @@ class AuthService {
 
   // Fallback token for when user is not logged in
   static const String _accessToken =
-      'XMCs9rMmZtL67wu7mX5wl_NEOApQ0iK1gSABGQLt5du3qripHzjKagfGNogFqaDM4L7rOzI-h33zc9qIIeWUXuPjHHaw8ZCQ3PDTyJYAqN3y0w9HEunOwspBS0-kTvUe0r-T3QR_dsU-y0BK0O2pnSQUx32my39xAPpCxlzy99Oj1w7jKiK1ktY2-coe3xGCWVbCcCzDwKVqhjKcJ92bW9mR_3oySjKMlE3Zr7KMUKFYd3Zvi6YPYrLwSP0xYYOzfc0GqVZWJRB33__ViBwCA-Vg5Btu6SjmyhLpKVu7djgNTx5fHHq3a3PCL30ghnfAjDG7M60CQD2YxmD6CSCymO-iFBP3FJPaHH9Ez1fvYCkDAYYPJ_Mt6FSjUxFZiMdS4mGEWyDQNrL3V17Al872-LCHiXXO1cVojicG_sj16BSmw_NcvMj9ovV_fhegL04GKTKz3T-pt9bI3oYGQa4L3nTyuu2h3Rp1vLJntR2ApI6AdyvfaHYv_CQVCg7TOn7MYy3SeMvuse-EiicpxbWUqhzkuhxm3Rx_T_gFXJppbq7ZihkpufqZZ15bGl98SV-9CwiIi9FpjqbWlOKpdH8iFAxCnPbHP9L7yYGG1md9E2I7-TYDYR_SFezOOuzK4ughzGjiWn6hT9IEv7mvDORQmESs6hgEXncIoQV_0eQQn5v8-mAumq11niuG_RKOvvH5MwFicXaP0jGftXNgJskJt4gtyUKDlKzmh2XnPm6WCMgXtLrJzPOD9cgIZlJYVKMYZZhZTHJvnIbMuG2plEgF30c5QGz2T6dxZ5LtZTQQrbnF7Mv6lRCOUnvg4XAZeJdrZb6ZkdcfNHUwsXkHl3qGgK5aieEKp7w1FQa0-8anztqrufrnwwzjN_9aRR_EeIFfkjSugmYvgTYFG1puBFdCZJsgrUKc9NfjurL5W-tCy21nc74srybfTUC2ydv4IVHDc9lsrLabnZG-Cgm_ehkmkpsNCWuFX0_mrXkYEo2pO0KOYpLawY1g4cCqLZRdMOYbKvSOWaKCwMsKeQhoHJK5qp_OJd4cd6SlmKR9KEsM9yt0yxxy1cTsBPHnrKS8AiGECXaVrq2dUQVclnpA4VH-KUNu5MpTCYeF0h6UVXz_vmmZ3a3bTnP6BaCupq5vAfx8sux7xoATFvkTXfkIdU1AALRpFvpM5O1iA8Vamzn56tCE7C-UfPxV3S2-Ok3232_S';
+      'iruYYlxyILK0XYOI7Av8nxO7AV5wEIgdDbCKATKM-Rvn2xiA7DbkORaTgd4VHBsuP--nN62Eh0PdEYiOfRH1kDlV6D5ua7pHP-l_QLtxkqUB_kpR3DgfbKq1sbuFspOmLMrP9baEO56nJ8bAF2DGy6Ey04jcYo9Tv5taX6Rsvm-2jGDrE1Pk4VPgfdYbUzP5cE3kWMnBn3g9VGydbCPk6pbkmUErXLNYqhRWg-iF6qBmvN3WOZ8wIYnT4cWNyqiGbxYrfTrm8YlOQeNX0f3s6eeJtbir26QXtNBhuW3MyW0pjOfOnbaIjajoZCUaagmq8eSzsWT48GMbSV86JIZHXUZj76dDqErr1bIJbt8-ok85hfCM2O7mFs5EMLafwDGXDI9kShzULfSw_RQoCl9upfyyOXkQazMi5fkKKGFHKff85S6-gI3U7ikwOGYe8tKPyLpndKyL-S0_tqPSnhfA4M0MnswNegIGkTkCXPBMBTLoRiATkRNKdyMKxj8R6LVFdHxMe59L98mTFF7onm1UBkHTbflrGkRAPpD4bHA4D8FXWbxp0JINdyXEhMi1jE9Am5MsmKcZw8A11K-tFKvUObyHBABNwJCEDLdZojTn2FDi3a0ezulx35MMb-j4Fg-0DSV_WdwjcAf3FyEzDnxEy_rhaa9sTPKae-u2d23m5as';
 
   // Getter for access token
   static String get accessToken => _accessToken;
@@ -106,6 +107,55 @@ class AuthService {
     } catch (e) {
       print('Error during logout: $e');
       return false;
+    }
+  }
+
+  static Future<bool> verifyOTP(String mobileNumber, String otp) async {
+    try {
+      print('Verifying OTP for: $mobileNumber with OTP: $otp');
+      final requestBody = {'UserId': '', 'MobileNo': mobileNumber, 'OTP': otp};
+      print('Request body: $requestBody');
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/shop/verifyotplogin'),
+        headers: getAuthHeaders(),
+        body: jsonEncode(requestBody),
+      );
+
+      print('Verify OTP Response Status: ${response.statusCode}');
+      print('Verify OTP Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        print('Parsed response data: $responseData');
+
+        // Log all possible success indicators
+        print('Status code: ${responseData['status_code']}');
+        print('Message: ${responseData['message']}');
+        print('Success flag: ${responseData['success']}');
+        print('Is verified: ${responseData['isVerified']}');
+
+        // Check various success indicators
+        if (responseData['status_code'] == 200 ||
+            responseData['message'] == 'Ok' ||
+            responseData['success'] == true ||
+            responseData['isVerified'] == true) {
+          print('OTP verification successful');
+          return true;
+        }
+
+        // If we get here, the OTP was not accepted
+        print('OTP verification failed. Response data: $responseData');
+        throw Exception(responseData['message'] ?? 'Invalid OTP');
+      }
+
+      // If we get a specific error response, throw it
+      final errorBody = jsonDecode(response.body);
+      print('Error response body: $errorBody');
+      throw Exception(errorBody['message'] ?? 'Failed to verify OTP');
+    } catch (e) {
+      print('Error verifying OTP: $e');
+      rethrow;
     }
   }
 }

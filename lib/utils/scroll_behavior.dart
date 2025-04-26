@@ -9,7 +9,7 @@ class CustomScrollBehavior extends ScrollBehavior {
   @override
   Widget buildScrollbar(
       BuildContext context, Widget child, ScrollableDetails details) {
-    return RawScrollbar(
+    return Scrollbar(
       controller: details.controller,
       thumbVisibility: true,
       thickness: 6,

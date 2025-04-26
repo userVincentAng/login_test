@@ -47,6 +47,11 @@ class _HomePageState extends State<HomePage>
   final CartService _cartService = CartService();
   int _cartItemCount = 0;
   Address? _selectedAddressObject;
+  final ScrollController _drawerScrollController = ScrollController();
+  String _currentAddress = '';
+  String _currentLabel = '';
+  String _floorUnit = '';
+  String _deliveryInstructions = '';
 
   @override
   void initState() {
@@ -59,12 +64,7 @@ class _HomePageState extends State<HomePage>
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
-    if (widget.initialPosition != null) {
-      _currentPosition = widget.initialPosition;
-      _fetchNearbyStores();
-    } else {
-      _loadDefaultAddress();
-    }
+    _initializeLocation();
 
     _searchController.addListener(_onSearchChanged);
     _loadCartCount();
@@ -74,6 +74,7 @@ class _HomePageState extends State<HomePage>
   void dispose() {
     _animationController.dispose();
     _searchController.dispose();
+    _drawerScrollController.dispose();
     super.dispose();
   }
 
@@ -99,8 +100,11 @@ class _HomePageState extends State<HomePage>
     });
   }
 
-  Future<void> _loadDefaultAddress() async {
-    try {
+  Future<void> _initializeLocation() async {
+    if (widget.initialPosition != null) {
+      _currentPosition = widget.initialPosition;
+      _fetchNearbyStores();
+    } else {
       final defaultAddress = await _addressService.getDefaultAddress();
       if (defaultAddress != null) {
         setState(() {
@@ -119,43 +123,24 @@ class _HomePageState extends State<HomePage>
           _selectedAddress = defaultAddress.fullAddress;
           _selectedAddressObject = defaultAddress;
         });
-        await _fetchNearbyStores();
-      } else {
-        await _getCurrentLocation();
+        _fetchNearbyStores();
       }
-    } catch (e) {
-      debugPrint('Error loading default address: $e');
-      await _getCurrentLocation();
     }
   }
 
   Future<void> _getCurrentLocation() async {
     try {
-      // Check location permission
-      final status = await Permission.location.request();
-
-      if (status.isGranted) {
-        // Get current position
-        final position = await LocationUtils.getCurrentPosition();
-
-        setState(() {
-          _currentPosition = position;
-          _errorMessage = '';
-        });
-
-        // Fetch nearby stores
-        await _fetchNearbyStores();
-      } else {
-        setState(() {
-          _errorMessage =
-              'Location permission is required to find nearby stores';
-          _isLoading = false;
-        });
-      }
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      setState(() {
+        _currentPosition = position;
+        _errorMessage = '';
+      });
+      _fetchNearbyStores();
     } catch (e) {
       setState(() {
         _errorMessage = 'Error getting location: $e';
-        _isLoading = false;
       });
     }
   }
@@ -308,16 +293,17 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  Future<void> _openAddressSelection() async {
+  Future<void> _selectAddress() async {
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
         builder: (context) => SavedAddressesPage(
-          onAddressSelected: (LatLng position, String address) {
+          onAddressSelected:
+              (latLng, address, floorUnit, instructions, label) async {
             setState(() {
               _currentPosition = Position(
-                latitude: position.latitude,
-                longitude: position.longitude,
+                latitude: latLng.latitude,
+                longitude: latLng.longitude,
                 timestamp: DateTime.now(),
                 accuracy: 0,
                 altitude: 0,
@@ -327,10 +313,12 @@ class _HomePageState extends State<HomePage>
                 altitudeAccuracy: 0,
                 headingAccuracy: 0,
               );
-              _selectedAddress = address;
-              _selectedAddressObject = Address.fromLatLng(position, address);
+              _currentAddress = address;
+              _currentLabel = label;
+              _floorUnit = floorUnit;
+              _deliveryInstructions = instructions;
             });
-            _fetchNearbyStores();
+            await _fetchNearbyStores();
           },
         ),
       ),
@@ -358,36 +346,31 @@ class _HomePageState extends State<HomePage>
       appBar: AppBar(
         backgroundColor: airforceBlue,
         elevation: 0,
-        title: InkWell(
-          onTap: _openAddressSelection,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.location_on, size: 20),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  _selectedAddress.isNotEmpty
-                      ? _selectedAddress
-                      : _currentPosition != null
-                          ? '${_currentPosition!.latitude.toStringAsFixed(4)}, ${_currentPosition!.longitude.toStringAsFixed(4)}'
-                          : 'Getting location...',
-                  style: TextStyle(
-                    fontSize: isSmallScreen ? 14 : 16,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _currentLabel.isNotEmpty ? _currentLabel : 'Select Address',
+              style: const TextStyle(fontSize: 16),
+            ),
+            if (_currentAddress.isNotEmpty)
+              Text(
+                _currentAddress,
+                style: const TextStyle(fontSize: 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(width: 8),
-              const Icon(Icons.arrow_drop_down, size: 20),
-            ],
-          ),
+          ],
         ),
         leading: IconButton(
           icon: const Icon(Icons.menu),
           onPressed: _toggleDrawer,
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.location_on),
+            onPressed: _selectAddress,
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -622,24 +605,31 @@ class _HomePageState extends State<HomePage>
                             ),
                           ),
                           Expanded(
-                            child: ListView(
-                              padding: EdgeInsets.zero,
-                              children: [
-                                _buildDrawerItem(
-                                    Icons.home, 'Home', isSmallScreen),
-                                _buildDrawerItem(
-                                    Icons.favorite, 'Favorites', isSmallScreen),
-                                _buildDrawerItem(Icons.history, 'Order History',
-                                    isSmallScreen),
-                                _buildDrawerItem(Icons.notifications,
-                                    'Notifications', isSmallScreen),
-                                _buildDrawerItem(
-                                    Icons.settings, 'Settings', isSmallScreen),
-                                _buildDrawerItem(Icons.help, 'Help & Support',
-                                    isSmallScreen),
-                                _buildDrawerItem(
-                                    Icons.logout, 'Logout', isSmallScreen),
-                              ],
+                            child: Scrollbar(
+                              controller: _drawerScrollController,
+                              thumbVisibility: true,
+                              thickness: 6,
+                              radius: const Radius.circular(3),
+                              child: ListView(
+                                controller: _drawerScrollController,
+                                padding: EdgeInsets.zero,
+                                children: [
+                                  _buildDrawerItem(
+                                      Icons.home, 'Home', isSmallScreen),
+                                  _buildDrawerItem(Icons.favorite, 'Favorites',
+                                      isSmallScreen),
+                                  _buildDrawerItem(Icons.history,
+                                      'Order History', isSmallScreen),
+                                  _buildDrawerItem(Icons.notifications,
+                                      'Notifications', isSmallScreen),
+                                  _buildDrawerItem(Icons.settings, 'Settings',
+                                      isSmallScreen),
+                                  _buildDrawerItem(Icons.help, 'Help & Support',
+                                      isSmallScreen),
+                                  _buildDrawerItem(
+                                      Icons.logout, 'Logout', isSmallScreen),
+                                ],
+                              ),
                             ),
                           ),
                         ],
