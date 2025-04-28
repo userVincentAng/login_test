@@ -96,7 +96,7 @@ class _LoginPageState extends State<LoginPage> {
       } else {
         throw Exception('Failed to send OTP');
       }
-    } on SocketException catch (e) {
+    } on SocketException {
       setState(() {
         _errorMessage = 'Network error. Please check your internet connection.';
       });

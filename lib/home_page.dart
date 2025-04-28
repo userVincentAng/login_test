@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'shop_detail_page.dart';
 import 'models/store.dart';
 import 'models/food_item.dart';
@@ -12,10 +10,6 @@ import 'saved_addresses_page.dart';
 import 'services/address_service.dart';
 import 'services/cart_service.dart';
 import 'cart_page.dart';
-import 'widgets/store_card.dart';
-import 'widgets/address_picker.dart';
-import 'widgets/cart_button.dart';
-import 'utils/location_utils.dart';
 
 //April 15
 class HomePage extends StatefulWidget {

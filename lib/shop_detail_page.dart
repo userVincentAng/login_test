@@ -3,6 +3,230 @@ import 'models/store.dart';
 import 'models/store_item.dart';
 import 'services/store_service.dart';
 import 'customize_order.dart';
+import 'package:shimmer/shimmer.dart';
+
+class StoreInfoDialog extends StatefulWidget {
+  final Store store;
+
+  const StoreInfoDialog({
+    super.key,
+    required this.store,
+  });
+
+  @override
+  State<StoreInfoDialog> createState() => _StoreInfoDialogState();
+}
+
+class _StoreInfoDialogState extends State<StoreInfoDialog> {
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Simulate loading delay
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    });
+  }
+
+  String _getDayName(int dayOfWeek) {
+    switch (dayOfWeek) {
+      case 0:
+        return 'Sunday';
+      case 1:
+        return 'Monday';
+      case 2:
+        return 'Tuesday';
+      case 3:
+        return 'Wednesday';
+      case 4:
+        return 'Thursday';
+      case 5:
+        return 'Friday';
+      case 6:
+        return 'Saturday';
+      default:
+        return '';
+    }
+  }
+
+  Widget _buildShimmerContainer(double height, [double? width]) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Container(
+        height: height,
+        width: width ?? double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                // Google Maps placeholder with shimmer
+                Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? Shimmer.fromColors(
+                          baseColor: Colors.grey[300]!,
+                          highlightColor: Colors.grey[100]!,
+                          child: Container(
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Center(
+                          child: Image(
+                            image: AssetImage('assets/images/google_logo.png'),
+                            width: 100,
+                          ),
+                        ),
+                ),
+                // Close button
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              spreadRadius: 1,
+                              blurRadius: 3,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.black,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Store name
+                  _isLoading
+                      ? _buildShimmerContainer(30, 200)
+                      : Text(
+                          widget.store.name,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                  const SizedBox(height: 16),
+                  // Location section
+                  const Text(
+                    'Location',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Address
+                  _isLoading
+                      ? _buildShimmerContainer(20)
+                      : Text(
+                          widget.store.addressLine1,
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                  if (widget.store.addressLine2 != null) ...[
+                    const SizedBox(height: 4),
+                    _isLoading
+                        ? _buildShimmerContainer(20)
+                        : Text(
+                            widget.store.addressLine2!,
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                  ],
+                  const SizedBox(height: 24),
+                  // Store Hours section
+                  const Text(
+                    'Store Hours',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Store hours
+                  ...List.generate(7, (index) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 120,
+                            child: _isLoading
+                                ? _buildShimmerContainer(20)
+                                : Text(
+                                    _getDayName(index),
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                          ),
+                          const SizedBox(width: 8),
+                          _isLoading
+                              ? _buildShimmerContainer(20, 100)
+                              : Text(
+                                  '${widget.store.storeHours[index].startTime} - ${widget.store.storeHours[index].endTime}',
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                        ],
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class ShopDetailPage extends StatefulWidget {
   final Store store;
@@ -182,7 +406,12 @@ class _ShopDetailPageState extends State<ShopDetailPage>
               ),
               IconButton(
                 icon: const Icon(Icons.info_outline),
-                onPressed: () {},
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => StoreInfoDialog(store: widget.store),
+                  );
+                },
               ),
             ],
           ),
@@ -207,8 +436,8 @@ class _ShopDetailPageState extends State<ShopDetailPage>
           SliverPadding(
             padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
             sliver: _isLoading
-                ? SliverToBoxAdapter(
-                    child: const Center(child: CircularProgressIndicator()),
+                ? const SliverToBoxAdapter(
+                    child: Center(child: CircularProgressIndicator()),
                   )
                 : _errorMessage.isNotEmpty
                     ? SliverToBoxAdapter(

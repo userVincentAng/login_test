@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'login_page.dart';
 import 'utils/theme.dart';
-import 'utils/transitions.dart';
-import 'utils/scroll_behavior.dart';
 import 'home_page.dart';
 import 'services/auth_service.dart';
 

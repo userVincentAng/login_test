@@ -26,7 +26,7 @@ class _CustomizeOrderPanelState extends State<CustomizeOrderPanel> {
   List<dynamic> _sugarLevels = [];
   bool _isLoading = true;
   String _errorMessage = '';
-  Map<String, dynamic> _selectedOptions = {};
+  final Map<String, dynamic> _selectedOptions = {};
   final TextEditingController _notesController = TextEditingController();
 
   @override
@@ -254,8 +254,9 @@ class _CustomizeOrderPanelState extends State<CustomizeOrderPanel> {
                 const SizedBox(height: 8),
                 ..._addOns.expand((modifier) {
                   // Skip sugar level modifier as it's handled separately
-                  if (modifier['ModifierName'] == 'Sugar Level')
+                  if (modifier['ModifierName'] == 'Sugar Level') {
                     return <Widget>[];
+                  }
 
                   final options = modifier['ModifierOptions'] as List<dynamic>?;
                   if (options == null || options.isEmpty) return <Widget>[];
