@@ -1,3 +1,13 @@
+import 'package:flutter/material.dart';
+import '../widgets/cached_image.dart';
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
 class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isLoadingMore = false;
