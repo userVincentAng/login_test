@@ -12,7 +12,7 @@ import 'services/cart_service.dart';
 import 'cart_page.dart';
 import 'widgets/shimmer_widget.dart';
 
-//April 15
+//April 30
 class HomePage extends StatefulWidget {
   final Position? initialPosition;
   const HomePage({super.key, this.initialPosition});
