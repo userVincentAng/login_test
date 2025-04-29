@@ -84,6 +84,22 @@ class CartService {
     }
   }
 
+  Future<void> updateQuantity(int index, int newQuantity) async {
+    if (index >= 0 && index < _items.length && newQuantity > 0) {
+      final item = _items[index];
+      _items[index] = CartItem(
+        storeId: item.storeId,
+        itemId: item.itemId,
+        name: item.name,
+        price: item.price,
+        quantity: newQuantity,
+        selectedOptions: item.selectedOptions,
+        notes: item.notes,
+      );
+      await saveCart();
+    }
+  }
+
   Future<void> clearCart() async {
     _items.clear();
     await saveCart();

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'services/cart_service.dart';
 import 'checkout_page.dart';
+import 'widgets/shimmer_widget.dart';
 
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
@@ -58,13 +59,46 @@ class _CartPageState extends State<CartPage> {
     }
   }
 
+  Widget _buildShimmerCartItem() {
+    return Card(
+      margin: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 8,
+      ),
+      child: ListTile(
+        title: ShimmerWidget.rectangular(height: 16),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            ShimmerWidget.rectangular(height: 12),
+            const SizedBox(height: 4),
+            ShimmerWidget.rectangular(height: 12),
+            const SizedBox(height: 4),
+            ShimmerWidget.rectangular(height: 12, width: 80),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ShimmerWidget.rectangular(width: 32, height: 32),
+            const SizedBox(width: 8),
+            ShimmerWidget.rectangular(width: 24, height: 24),
+            const SizedBox(width: 8),
+            ShimmerWidget.rectangular(width: 32, height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Shopping Cart'),
         actions: [
-          if (_cartService.items.isNotEmpty)
+          if (_cartService.items.isNotEmpty && !_isLoading)
             IconButton(
               icon: const Icon(Icons.delete),
               onPressed: _clearCart,
@@ -72,7 +106,10 @@ class _CartPageState extends State<CartPage> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? ListView.builder(
+              itemCount: 3,
+              itemBuilder: (context, index) => _buildShimmerCartItem(),
+            )
           : _cartService.items.isEmpty
               ? const Center(
                   child: Text(
@@ -139,12 +176,35 @@ class _CartPageState extends State<CartPage> {
                                     ),
                                   ],
                                 ),
-                                trailing: Text(
-                                  'x${item.quantity}',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.remove),
+                                      onPressed: () async {
+                                        if (item.quantity > 1) {
+                                          await _cartService.updateQuantity(
+                                              index, item.quantity - 1);
+                                          setState(() {});
+                                        }
+                                      },
+                                    ),
+                                    Text(
+                                      item.quantity.toString(),
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.add),
+                                      onPressed: () async {
+                                        await _cartService.updateQuantity(
+                                            index, item.quantity + 1);
+                                        setState(() {});
+                                      },
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),

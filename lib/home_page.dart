@@ -10,6 +10,7 @@ import 'saved_addresses_page.dart';
 import 'services/address_service.dart';
 import 'services/cart_service.dart';
 import 'cart_page.dart';
+import 'widgets/shimmer_widget.dart';
 
 //April 15
 class HomePage extends StatefulWidget {
@@ -365,16 +366,6 @@ class _HomePageState extends State<HomePage>
             icon: const Icon(Icons.location_on),
             onPressed: _selectAddress,
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              setState(() {
-                _isLoading = true;
-                _errorMessage = '';
-              });
-              _getCurrentLocation();
-            },
-          ),
           Stack(
             children: [
               IconButton(
@@ -413,121 +404,140 @@ class _HomePageState extends State<HomePage>
       body: Stack(
         children: [
           SafeArea(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: EdgeInsets.only(
-                    bottom: bottomPadding + (isSmallScreen ? 60 : 70)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Search Bar
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isSmallScreen ? 12.0 : 16.0,
-                        vertical: isSmallScreen ? 8.0 : 16.0,
-                      ),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(0.2),
-                              spreadRadius: 1,
-                              blurRadius: 5,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+            child: RefreshIndicator(
+              onRefresh: () async {
+                setState(() {
+                  _isLoading = true;
+                  _errorMessage = '';
+                });
+                await _getCurrentLocation();
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Padding(
+                  padding: EdgeInsets.only(
+                      bottom: bottomPadding + (isSmallScreen ? 60 : 70)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Search Bar
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 12.0 : 16.0,
+                          vertical: isSmallScreen ? 8.0 : 16.0,
                         ),
-                        child: TextField(
-                          controller: _searchController,
-                          decoration: InputDecoration(
-                            hintText: 'Search Restaurant or Food',
-                            prefixIcon: const Icon(
-                              Icons.search,
-                              color: airforceBlue,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.2),
+                                spreadRadius: 1,
+                                blurRadius: 5,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: TextField(
+                            controller: _searchController,
+                            decoration: InputDecoration(
+                              hintText: 'Search Restaurant or Food',
+                              prefixIcon: const Icon(
+                                Icons.search,
+                                color: airforceBlue,
+                              ),
+                              suffixIcon: _searchController.text.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                      },
+                                    )
+                                  : null,
+                              border: InputBorder.none,
+                              contentPadding:
+                                  EdgeInsets.all(isSmallScreen ? 12 : 16),
                             ),
-                            suffixIcon: _searchController.text.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(Icons.clear),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                    },
-                                  )
-                                : null,
-                            border: InputBorder.none,
-                            contentPadding:
-                                EdgeInsets.all(isSmallScreen ? 12 : 16),
                           ),
                         ),
                       ),
-                    ),
 
-                    // Nearby Stores Section
-                    _buildSectionTitle('Nearby Stores', isSmallScreen),
-                    if (_isLoading)
-                      const Center(child: CircularProgressIndicator())
-                    else if (_errorMessage.isNotEmpty)
-                      Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Text(
-                            _errorMessage,
-                            style: const TextStyle(color: Colors.red),
-                            textAlign: TextAlign.center,
+                      // Nearby Stores Section
+                      _buildSectionTitle('Nearby Stores', isSmallScreen),
+                      if (_isLoading)
+                        _buildHorizontalCarousel(
+                          context,
+                          [],
+                          isLoading: true,
+                          isStore: true,
+                        )
+                      else if (_errorMessage.isNotEmpty)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Text(
+                              _errorMessage,
+                              style: const TextStyle(color: Colors.red),
+                              textAlign: TextAlign.center,
+                            ),
                           ),
+                        )
+                      else if (_filteredStores.isEmpty)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Text('No stores found'),
+                          ),
+                        )
+                      else
+                        _buildHorizontalCarousel(
+                          context,
+                          _filteredStores
+                              .map(
+                                (store) => _buildStoreCard(
+                                  store.name,
+                                  Colors.orange[100]!,
+                                  isSmallScreen,
+                                  store: store,
+                                ),
+                              )
+                              .toList(),
                         ),
-                      )
-                    else if (_filteredStores.isEmpty)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Text('No stores found'),
-                        ),
-                      )
-                    else
-                      _buildHorizontalCarousel(
-                        context,
-                        _filteredStores
-                            .map(
-                              (store) => _buildStoreCard(
-                                store.name,
-                                Colors.orange[100]!,
-                                isSmallScreen,
-                                store: store,
-                              ),
-                            )
-                            .toList(),
-                      ),
 
-                    // Nearby Food Section
-                    const SizedBox(height: 24),
-                    _buildSectionTitle('Nearby Food', isSmallScreen),
-                    if (_isFoodLoading)
-                      const Center(child: CircularProgressIndicator())
-                    else if (_filteredFood.isEmpty)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(16.0),
-                          child: Text('No food items found'),
+                      // Nearby Food Section
+                      const SizedBox(height: 24),
+                      _buildSectionTitle('Nearby Food', isSmallScreen),
+                      if (_isFoodLoading)
+                        _buildHorizontalCarousel(
+                          context,
+                          [],
+                          isLoading: true,
+                        )
+                      else if (_filteredFood.isEmpty)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(16.0),
+                            child: Text('No food items found'),
+                          ),
+                        )
+                      else
+                        _buildHorizontalCarousel(
+                          context,
+                          _filteredFood
+                              .map(
+                                (food) => _buildFoodCard(
+                                  food.name,
+                                  food.price.toStringAsFixed(2),
+                                  Colors.green[100]!,
+                                  isSmallScreen,
+                                  food: food,
+                                ),
+                              )
+                              .toList(),
                         ),
-                      )
-                    else
-                      _buildHorizontalCarousel(
-                        context,
-                        _filteredFood
-                            .map(
-                              (food) => _buildFoodCard(
-                                food.name,
-                                food.price.toStringAsFixed(2),
-                                Colors.green[100]!,
-                                isSmallScreen,
-                                food: food,
-                              ),
-                            )
-                            .toList(),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -707,25 +717,116 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  Widget _buildHorizontalCarousel(BuildContext context, List<Widget> items) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 360;
+  Widget _buildHorizontalCarousel(
+    BuildContext context,
+    List<Widget> items, {
+    bool isLoading = false,
+    bool isStore = false,
+  }) {
+    final bool isSmallScreen = MediaQuery.of(context).size.width < 400;
 
-    return SizedBox(
-      height: isSmallScreen ? 160 : 180,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.symmetric(
-          horizontal: isSmallScreen ? 8.0 : 16.0,
-          vertical: 8.0,
-        ),
-        itemCount: items.length,
-        itemBuilder: (context, index) {
+    if (isLoading) {
+      items = List.generate(
+        4,
+        (index) => isStore
+            ? _buildShimmerStoreCard(isSmallScreen)
+            : _buildShimmerFoodCard(isSmallScreen),
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: items.map((item) {
           return Padding(
             padding: const EdgeInsets.only(right: 16.0),
-            child: items[index],
+            child: item,
           );
-        },
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildShimmerFoodCard(bool isSmallScreen) {
+    return Container(
+      width: isSmallScreen ? 130 : 150,
+      height: isSmallScreen ? 140 : 160,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          ShimmerWidget.rectangular(
+            height: isSmallScreen ? 85 : 95,
+          ),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.all(isSmallScreen ? 6.0 : 8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ShimmerWidget.rectangular(height: 12),
+                  const SizedBox(height: 4),
+                  ShimmerWidget.rectangular(height: 10),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerStoreCard(bool isSmallScreen) {
+    return Container(
+      width: isSmallScreen ? 130 : 150,
+      height: isSmallScreen ? 140 : 160,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          ShimmerWidget.rectangular(
+            height: isSmallScreen ? 85 : 95,
+          ),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.all(isSmallScreen ? 6.0 : 8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ShimmerWidget.rectangular(height: 12),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      ShimmerWidget.rectangular(width: 40, height: 10),
+                      const SizedBox(width: 4),
+                      ShimmerWidget.rectangular(width: 20, height: 10),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

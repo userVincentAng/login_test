@@ -4,6 +4,7 @@ import 'models/store_item.dart';
 import 'services/store_service.dart';
 import 'customize_order.dart';
 import 'package:shimmer/shimmer.dart';
+import 'widgets/shimmer_widget.dart';
 
 class StoreInfoDialog extends StatefulWidget {
   final Store store;
@@ -248,12 +249,18 @@ class _ShopDetailPageState extends State<ShopDetailPage>
   int _selectedTab = 0;
   final ScrollController _scrollController = ScrollController();
   final Map<int, double> _categoryPositions = {};
+  bool _isSmallScreen = false;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadStoreItems();
-    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        _isSmallScreen = MediaQuery.of(context).size.width < 360;
+      });
+    });
   }
 
   @override
@@ -272,11 +279,6 @@ class _ShopDetailPageState extends State<ShopDetailPage>
         _isLoading = false;
       });
       // Initialize tab controller after categories are loaded
-      _tabController = TabController(
-        length: _categories.length,
-        vsync: this,
-        initialIndex: _selectedTab,
-      );
       _tabController.addListener(() {
         if (_tabController.indexIsChanging) {
           _scrollToCategory(_tabController.index);
@@ -352,10 +354,83 @@ class _ShopDetailPageState extends State<ShopDetailPage>
     }
   }
 
+  Widget _buildLoadingMenuItem(bool isSmallScreen) {
+    return Container(
+      margin: EdgeInsets.only(bottom: isSmallScreen ? 12.0 : 16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.all(isSmallScreen ? 10.0 : 12.0),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: double.infinity,
+                  height: 16,
+                  color: Colors.grey[200],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: 80,
+                  height: 14,
+                  color: Colors.grey[200],
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: isSmallScreen ? 70 : 80,
+            height: isSmallScreen ? 70 : 80,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingCategory() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          color: Colors.grey[100],
+          child: Container(
+            width: 120,
+            height: 18,
+            color: Colors.grey[200],
+          ),
+        ),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: 3,
+          itemBuilder: (context, index) =>
+              _buildLoadingMenuItem(_isSmallScreen),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const Color airforceBlue = Color(0xFF5D8AA8);
-    final isSmallScreen = MediaQuery.of(context).size.width < 360;
 
     return Scaffold(
       body: CustomScrollView(
@@ -434,10 +509,16 @@ class _ShopDetailPageState extends State<ShopDetailPage>
             ),
           // Menu Items
           SliverPadding(
-            padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
+            padding: EdgeInsets.all(_isSmallScreen ? 12.0 : 16.0),
             sliver: _isLoading
-                ? const SliverToBoxAdapter(
-                    child: Center(child: CircularProgressIndicator()),
+                ? SliverToBoxAdapter(
+                    child: Column(
+                      children: [
+                        _buildLoadingCategory(),
+                        const SizedBox(height: 16),
+                        _buildLoadingCategory(),
+                      ],
+                    ),
                   )
                 : _errorMessage.isNotEmpty
                     ? SliverToBoxAdapter(
@@ -467,7 +548,7 @@ class _ShopDetailPageState extends State<ShopDetailPage>
                                       item.productName,
                                       item.price.toStringAsFixed(2),
                                       Colors.orange[100]!,
-                                      isSmallScreen,
+                                      _isSmallScreen,
                                       item: item,
                                     )),
                               ],
@@ -488,21 +569,23 @@ class _ShopDetailPageState extends State<ShopDetailPage>
     bool isSmallScreen, {
     StoreItem? item,
   }) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: isSmallScreen ? 12.0 : 16.0),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              spreadRadius: 1,
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+    return Container(
+      margin: EdgeInsets.only(bottom: isSmallScreen ? 12.0 : 16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: () {
             if (item != null) {

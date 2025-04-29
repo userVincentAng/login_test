@@ -125,64 +125,27 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         print('HTTP request was successful');
-        if (statusCode == 1 ||
-            (statusCode == 3 &&
-                message == "No user found with this mobile no.")) {
-          print('OTP verification successful');
-          // Check if user is already registered
-          print('Checking if user is already registered...');
-          final checkResponse = await http.post(
-            Uri.parse('http://test.shoppazing.com/api/shop/registeruser'),
-            headers: AuthService.getAuthHeaders(),
-            body: jsonEncode({
-              'Email': '',
-              'Firstname': '',
-              'Lastname': '',
-              'MobileNo': widget.mobileNumber,
-              'Password': '',
-              'RoleName': 'User',
-            }),
-          );
+        print('Checking OTP verification conditions...');
+        print('Status code is: $statusCode');
+        print('Message is: $message');
 
-          print('User check response status code: ${checkResponse.statusCode}');
-          print('User check response body: ${checkResponse.body}');
-
-          // Parse the response body to check the status_code
-          final checkData = jsonDecode(checkResponse.body);
-          final userStatusCode = checkData['status_code'];
-          final userMessage = checkData['message'];
-
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('OTP verified successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-
-          if (userStatusCode == 1 && userMessage == "Mobile No exist") {
-            // User is already registered, navigate to home page
-            print('User is already registered, navigating to home page...');
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const HomePage()),
-            );
-          } else {
-            // User is not registered, navigate to registration page
-            print('User is not registered, navigating to registration page...');
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    RegistrationPage(mobileNumber: widget.mobileNumber),
-              ),
-            );
-          }
+        // Check for all possible success conditions
+        if (statusCode == 200 || statusCode == 1) {
+          print('Success: status_code is $statusCode');
+          _handleSuccessfulVerification();
+        } else if (statusCode == 3 &&
+            message == "No user found with this mobile no.") {
+          print('Success: status_code is 3 and message indicates new user');
+          _handleSuccessfulVerification();
         } else {
-          throw Exception('Invalid OTP. Please try again.');
+          print(
+              'OTP verification failed. Status code: $statusCode, Message: $message');
+          throw Exception('Invalid OTP. Server response: $message');
         }
       } else {
-        throw Exception('Failed to verify OTP. Please try again.');
+        print('HTTP request failed with status: ${response.statusCode}');
+        throw Exception(
+            'Failed to verify OTP. Server returned status: ${response.statusCode}');
       }
     } on SocketException catch (e) {
       print('Network error: $e');
@@ -218,6 +181,61 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
     }
   }
 
+  Future<void> _handleSuccessfulVerification() async {
+    print('Handling successful verification...');
+    // Check if user is already registered
+    print('Checking if user is already registered...');
+    final checkResponse = await http.post(
+      Uri.parse('http://test.shoppazing.com/api/shop/registeruser'),
+      headers: AuthService.getAuthHeaders(),
+      body: jsonEncode({
+        'Email': '',
+        'Firstname': '',
+        'Lastname': '',
+        'MobileNo': widget.mobileNumber,
+        'Password': '',
+        'RoleName': 'User',
+      }),
+    );
+
+    print('User check response status code: ${checkResponse.statusCode}');
+    print('User check response body: ${checkResponse.body}');
+
+    // Parse the response body to check the status_code
+    final checkData = jsonDecode(checkResponse.body);
+    final userStatusCode = checkData['status_code'];
+    final userMessage = checkData['message'];
+    print('User check status code: $userStatusCode');
+    print('User check message: $userMessage');
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('OTP verified successfully!'),
+        backgroundColor: Colors.green,
+      ),
+    );
+
+    if (userStatusCode == 1 && userMessage == "Mobile No exist") {
+      // User is already registered, navigate to home page
+      print('User is already registered, navigating to home page...');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomePage()),
+      );
+    } else {
+      // User is not registered, navigate to registration page
+      print('User is not registered, navigating to registration page...');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              RegistrationPage(mobileNumber: widget.mobileNumber),
+        ),
+      );
+    }
+  }
+
   Future<void> _resendOTP() async {
     if (!_canResendOTP) return;
 
@@ -231,10 +249,12 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
       print('Mobile number: ${widget.mobileNumber}');
 
       final response = await http.post(
-        Uri.parse('http://test.shoppazing.com/api/shop/sendotplogin'),
+        Uri.parse('http://test.shoppazing.com/api/shop/loginbyotp'),
         headers: AuthService.getAuthHeaders(),
         body: jsonEncode({
+          'UserId': '',
           'MobileNo': widget.mobileNumber,
+          'AppHash': 'h234shsw',
         }),
       );
 
@@ -261,6 +281,9 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
     } catch (e) {
       print('Error resending OTP: $e');
       if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString();
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
