@@ -254,7 +254,6 @@ class _ShopDetailPageState extends State<ShopDetailPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     _loadStoreItems();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
@@ -272,44 +271,64 @@ class _ShopDetailPageState extends State<ShopDetailPage>
 
   Future<void> _loadStoreItems() async {
     try {
-      final result = await _storeService.getStoreItems(widget.store.storeId);
       setState(() {
-        _items = result['items'];
-        _categories = result['categories'];
+        _isLoading = true;
+        _errorMessage = '';
+      });
+
+      final result = await _storeService.getStoreItems(widget.store.storeId);
+      if (result == null ||
+          result['items'] == null ||
+          result['categories'] == null) {
+        throw Exception('Invalid response from server');
+      }
+
+      setState(() {
+        _items = result['items'] ?? [];
+        _categories = result['categories'] ?? [];
         _isLoading = false;
       });
+
       // Initialize tab controller after categories are loaded
-      _tabController.addListener(() {
-        if (_tabController.indexIsChanging) {
-          _scrollToCategory(_tabController.index);
-        }
-      });
+      if (_categories.isNotEmpty) {
+        _tabController = TabController(length: _categories.length, vsync: this);
+        _tabController.addListener(() {
+          if (_tabController.indexIsChanging) {
+            _scrollToCategory(_tabController.index);
+          }
+        });
+      }
+
       // Calculate category positions after items are loaded
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _calculateCategoryPositions();
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error loading items: $e';
+        _errorMessage = 'Error loading items: ${e.toString()}';
         _isLoading = false;
       });
     }
   }
 
   void _calculateCategoryPositions() {
+    if (_categories.isEmpty) return;
+
     final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
     if (renderBox == null) return;
 
     double currentPosition = 0;
     for (var category in _categories) {
-      _categoryPositions[category.id] = currentPosition;
-      // Add height of category header
-      currentPosition += 56; // Approximate height of category header
-      // Add height of items in this category
-      final categoryItems =
-          _items.where((item) => item.categoryId == category.id).length;
-      currentPosition +=
-          (categoryItems * 100.0); // Approximate height of each item
+      if (category.id != null) {
+        _categoryPositions[category.id!] = currentPosition;
+        // Add height of category header
+        currentPosition += 56; // Approximate height of category header
+        // Add height of items in this category
+        final categoryItems =
+            _items.where((item) => item.categoryId == category.id).length;
+        currentPosition +=
+            (categoryItems * 100.0); // Approximate height of each item
+      }
     }
   }
 
@@ -317,13 +336,15 @@ class _ShopDetailPageState extends State<ShopDetailPage>
     if (categoryIndex < 0 || categoryIndex >= _categories.length) return;
 
     final category = _categories[categoryIndex];
-    final position = _categoryPositions[category.id];
-    if (position != null) {
-      _scrollController.animateTo(
-        position,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
+    if (category.id != null) {
+      final position = _categoryPositions[category.id!];
+      if (position != null) {
+        _scrollController.animateTo(
+          position,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
     }
   }
 
@@ -370,36 +391,40 @@ class _ShopDetailPageState extends State<ShopDetailPage>
         ],
       ),
       padding: EdgeInsets.all(isSmallScreen ? 10.0 : 12.0),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: double.infinity,
-                  height: 16,
-                  color: Colors.grey[200],
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  width: 80,
-                  height: 14,
-                  color: Colors.grey[200],
-                ),
-              ],
+      child: Shimmer.fromColors(
+        baseColor: Colors.grey[300]!,
+        highlightColor: Colors.grey[100]!,
+        child: Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    height: 16,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: 80,
+                    height: 14,
+                    color: Colors.white,
+                  ),
+                ],
+              ),
             ),
-          ),
-          Container(
-            width: isSmallScreen ? 70 : 80,
-            height: isSmallScreen ? 70 : 80,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(8),
+            Container(
+              width: isSmallScreen ? 70 : 80,
+              height: isSmallScreen ? 70 : 80,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -408,13 +433,17 @@ class _ShopDetailPageState extends State<ShopDetailPage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.grey[100],
+        Shimmer.fromColors(
+          baseColor: Colors.grey[300]!,
+          highlightColor: Colors.grey[100]!,
           child: Container(
-            width: 120,
-            height: 18,
-            color: Colors.grey[200],
+            padding: const EdgeInsets.all(16),
+            color: Colors.white,
+            child: Container(
+              width: 120,
+              height: 18,
+              color: Colors.white,
+            ),
           ),
         ),
         ListView.builder(

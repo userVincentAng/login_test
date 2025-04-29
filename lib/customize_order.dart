@@ -160,7 +160,9 @@ class _CustomizeOrderPanelState extends State<CustomizeOrderPanel> {
       notes: _notesController.text.isNotEmpty ? _notesController.text : null,
     );
 
-    await CartService().addItem(cartItem);
+    final cartService = CartService();
+    await cartService.addItem(cartItem);
+
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(

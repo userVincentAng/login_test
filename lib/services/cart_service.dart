@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CartItem {
@@ -49,12 +50,27 @@ class CartService {
   static const String _cartKey = 'cart_items';
   static final CartService _instance = CartService._internal();
   final List<CartItem> _items = [];
+  final List<VoidCallback> _listeners = [];
 
   factory CartService() {
     return _instance;
   }
 
   CartService._internal();
+
+  void addListener(VoidCallback listener) {
+    _listeners.add(listener);
+  }
+
+  void removeListener(VoidCallback listener) {
+    _listeners.remove(listener);
+  }
+
+  void _notifyListeners() {
+    for (var listener in _listeners) {
+      listener();
+    }
+  }
 
   Future<void> loadCart() async {
     final prefs = await SharedPreferences.getInstance();
@@ -63,6 +79,7 @@ class CartService {
       final List<dynamic> decoded = jsonDecode(cartJson);
       _items.clear();
       _items.addAll(decoded.map((item) => CartItem.fromJson(item)));
+      _notifyListeners();
     }
   }
 
@@ -70,6 +87,7 @@ class CartService {
     final prefs = await SharedPreferences.getInstance();
     final cartJson = jsonEncode(_items.map((item) => item.toJson()).toList());
     await prefs.setString(_cartKey, cartJson);
+    _notifyListeners();
   }
 
   Future<void> addItem(CartItem item) async {

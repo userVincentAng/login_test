@@ -60,9 +60,17 @@ class _HomePageState extends State<HomePage>
     );
 
     _initializeLocation();
-
     _searchController.addListener(_onSearchChanged);
-    _loadCartCount();
+
+    // Initialize cart and set up listener
+    _cartService.loadCart().then((_) {
+      if (mounted) {
+        setState(() {
+          _cartItemCount = _cartService.itemCount;
+        });
+      }
+    });
+    _cartService.addListener(_onCartChanged);
   }
 
   @override
@@ -70,6 +78,7 @@ class _HomePageState extends State<HomePage>
     _animationController.dispose();
     _searchController.dispose();
     _drawerScrollController.dispose();
+    _cartService.removeListener(_onCartChanged);
     super.dispose();
   }
 
@@ -320,11 +329,21 @@ class _HomePageState extends State<HomePage>
     );
   }
 
+  void _onCartChanged() {
+    if (mounted) {
+      setState(() {
+        _cartItemCount = _cartService.itemCount;
+      });
+    }
+  }
+
   Future<void> _loadCartCount() async {
     await _cartService.loadCart();
-    setState(() {
-      _cartItemCount = _cartService.itemCount;
-    });
+    if (mounted) {
+      setState(() {
+        _cartItemCount = _cartService.itemCount;
+      });
+    }
   }
 
   @override
@@ -374,25 +393,34 @@ class _HomePageState extends State<HomePage>
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const CartPage()),
-                  ).then((_) => _loadCartCount());
+                  );
                 },
               ),
               if (_cartItemCount > 0)
                 Positioned(
                   right: 8,
                   top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      _cartItemCount.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const CartPage()),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        _cartItemCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
