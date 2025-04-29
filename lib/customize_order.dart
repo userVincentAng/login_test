@@ -132,7 +132,9 @@ class _CustomizeOrderPanelState extends State<CustomizeOrderPanel> {
   }
 
   double _calculateTotalPrice() {
-    double total = widget.item.price * _quantity;
+    // Add 10% to base price
+    double basePrice = widget.item.price * 1.10;
+    double total = basePrice * _quantity;
 
     // Add variant price if selected
     if (_selectedOptions['variant'] != null) {
@@ -150,11 +152,14 @@ class _CustomizeOrderPanelState extends State<CustomizeOrderPanel> {
   }
 
   Future<void> _addToCart() async {
+    // Calculate base price with 10% increase
+    double basePrice = widget.item.price * 1.10;
+
     final cartItem = CartItem(
       storeId: widget.storeId,
       itemId: widget.item.id,
       name: widget.item.productName,
-      price: _calculateTotalPrice() / _quantity,
+      price: basePrice, // Use the increased base price
       quantity: _quantity,
       selectedOptions: _selectedOptions,
       notes: _notesController.text.isNotEmpty ? _notesController.text : null,

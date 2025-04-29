@@ -598,6 +598,10 @@ class _ShopDetailPageState extends State<ShopDetailPage>
     bool isSmallScreen, {
     StoreItem? item,
   }) {
+    // Calculate price with 10% increase
+    double originalPrice = double.parse(price);
+    double increasedPrice = originalPrice * 1.10;
+
     return Container(
       margin: EdgeInsets.only(bottom: isSmallScreen ? 12.0 : 16.0),
       decoration: BoxDecoration(
@@ -653,7 +657,7 @@ class _ShopDetailPageState extends State<ShopDetailPage>
                       ),
                       SizedBox(height: isSmallScreen ? 2 : 4),
                       Text(
-                        '₱$price',
+                        '₱${increasedPrice.toStringAsFixed(2)}',
                         style: TextStyle(
                           fontSize: isSmallScreen ? 14 : 16,
                           color: const Color(0xFF5D8AA8),
