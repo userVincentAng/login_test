@@ -2,57 +2,72 @@ import 'package:latlong2/latlong.dart';
 import 'cart_item.dart';
 
 class Order {
-  final String id;
-  final List<CartItem> items;
-  final double subtotal;
-  final double deliveryFee;
-  final double total;
-  final String deliveryAddress;
-  final LatLng deliveryLocation;
-  final String paymentMethod;
-  final String? deliveryNotes;
-  final DateTime orderTime;
-  final String status;
+  final String orderId;
+  final String storeName;
+  final String storeAddress;
+  final String storeImage;
+  final double totalAmount;
+  final String orderStatus;
+  final String orderPin;
+  final List<OrderItem> items;
+  final DateTime orderDate;
+  final String? riderId;
 
-  const Order({
-    required this.id,
+  Order({
+    required this.orderId,
+    required this.storeName,
+    required this.storeAddress,
+    required this.storeImage,
+    required this.totalAmount,
+    required this.orderStatus,
+    required this.orderPin,
     required this.items,
-    required this.subtotal,
-    required this.deliveryFee,
-    required this.total,
-    required this.deliveryAddress,
-    required this.deliveryLocation,
-    required this.paymentMethod,
-    this.deliveryNotes,
-    required this.orderTime,
-    this.status = 'pending',
+    required this.orderDate,
+    this.riderId,
   });
 
-  Order copyWith({
-    String? id,
-    List<CartItem>? items,
-    double? subtotal,
-    double? deliveryFee,
-    double? total,
-    String? deliveryAddress,
-    LatLng? deliveryLocation,
-    String? paymentMethod,
-    String? deliveryNotes,
-    DateTime? orderTime,
-    String? status,
-  }) {
+  factory Order.fromJson(Map<String, dynamic> json) {
     return Order(
-      id: id ?? this.id,
-      items: items ?? this.items,
-      subtotal: subtotal ?? this.subtotal,
-      deliveryFee: deliveryFee ?? this.deliveryFee,
-      total: total ?? this.total,
-      deliveryAddress: deliveryAddress ?? this.deliveryAddress,
-      deliveryLocation: deliveryLocation ?? this.deliveryLocation,
-      paymentMethod: paymentMethod ?? this.paymentMethod,
-      deliveryNotes: deliveryNotes ?? this.deliveryNotes,
-      orderTime: orderTime ?? this.orderTime,
-      status: status ?? this.status,
+      orderId: json['order_id'] ?? '',
+      storeName: json['store_name'] ?? '',
+      storeAddress: json['store_address'] ?? '',
+      storeImage: json['store_image'] ?? '',
+      totalAmount: (json['total_amount'] ?? 0.0).toDouble(),
+      orderStatus: json['order_status'] ?? '',
+      orderPin: json['order_pin'] ?? '',
+      items: (json['items'] as List?)
+              ?.map((item) => OrderItem.fromJson(item))
+              .toList() ??
+          [],
+      orderDate:
+          DateTime.parse(json['order_date'] ?? DateTime.now().toString()),
+      riderId: json['rider_id'],
+    );
+  }
+}
+
+class OrderItem {
+  final String itemId;
+  final String name;
+  final double price;
+  final int quantity;
+  final String? imageUrl;
+
+  OrderItem({
+    required this.itemId,
+    required this.name,
+    required this.price,
+    required this.quantity,
+    this.imageUrl,
+  });
+
+  factory OrderItem.fromJson(Map<String, dynamic> json) {
+    return OrderItem(
+      itemId: json['item_id'] ?? '',
+      name: json['name'] ?? '',
+      price: (json['price'] ?? 0.0).toDouble(),
+      quantity: json['quantity'] ?? 0,
+      imageUrl: json['image_url'],
     );
   }
 }

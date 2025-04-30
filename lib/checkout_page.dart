@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'services/cart_service.dart';
+import 'services/address_service.dart';
 import 'saved_addresses_page.dart';
 import 'widgets/shimmer_widget.dart';
 
@@ -13,9 +14,13 @@ class CheckoutPage extends StatefulWidget {
 
 class _CheckoutPageState extends State<CheckoutPage> {
   final CartService _cartService = CartService();
+  final AddressService _addressService = AddressService();
   String _selectedPaymentMethod = 'Cash on Delivery';
   String? _selectedAddress;
   LatLng? _selectedCoordinates;
+  String? _floorUnit;
+  String? _deliveryInstructions;
+  String? _addressLabel;
   final List<String> _paymentMethods = [
     'Cash on Delivery',
     'Credit Card',
@@ -31,13 +36,27 @@ class _CheckoutPageState extends State<CheckoutPage> {
     _loadData();
   }
 
-  void _loadData() {
-    // Simulate loading data
-    Future.delayed(Duration(seconds: 2), () {
-      setState(() {
-        _isLoading = false;
-      });
-    });
+  Future<void> _loadData() async {
+    try {
+      final defaultAddress = await _addressService.getDefaultAddress();
+      if (defaultAddress != null) {
+        if (mounted) {
+          setState(() {
+            _selectedAddress = defaultAddress.fullAddress;
+            _selectedCoordinates = defaultAddress.toLatLng();
+            _addressLabel = defaultAddress.label;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading default address: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -65,18 +84,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     const SizedBox(height: 8),
                     Card(
                       child: InkWell(
-                        onTap: () async {
-                          final result = await Navigator.push(
+                        onTap: () {
+                          Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => SavedAddressesPage(
                                 onAddressSelected: (latLng, address, floorUnit,
                                     instructions, label) async {
-                                  setState(() {
-                                    _selectedAddress = address;
-                                    _selectedCoordinates = latLng;
-                                  });
-                                  Navigator.pop(context);
+                                  if (mounted) {
+                                    setState(() {
+                                      _selectedAddress = address;
+                                      _selectedCoordinates = latLng;
+                                      _floorUnit = floorUnit;
+                                      _deliveryInstructions = instructions;
+                                      _addressLabel = label;
+                                    });
+                                  }
                                 },
                               ),
                             ),
@@ -365,17 +388,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Delivery Address Section
-          ShimmerWidget.rectangular(height: 24, width: 150),
+          const ShimmerWidget.rectangular(height: 24, width: 150),
           const SizedBox(height: 8),
           Card(
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ShimmerWidget.rectangular(height: 16, width: double.infinity),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   ShimmerWidget.rectangular(height: 16, width: 200),
                 ],
               ),
@@ -384,7 +407,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           const SizedBox(height: 24),
 
           // Order Summary Section
-          ShimmerWidget.rectangular(height: 24, width: 150),
+          const ShimmerWidget.rectangular(height: 24, width: 150),
           const SizedBox(height: 8),
           Card(
             child: Column(
@@ -393,12 +416,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: 3,
-                  itemBuilder: (context, index) => ListTile(
+                  itemBuilder: (context, index) => const ListTile(
                     title: ShimmerWidget.rectangular(height: 16),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         ShimmerWidget.rectangular(height: 12, width: 150),
                       ],
                     ),
@@ -411,9 +434,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   child: Column(
                     children: List.generate(
                         4,
-                        (index) => Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 4.0),
+                        (index) => const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 4.0),
                               child: Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
@@ -433,13 +455,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
           const SizedBox(height: 24),
 
           // Payment Method Section
-          ShimmerWidget.rectangular(height: 24, width: 150),
+          const ShimmerWidget.rectangular(height: 24, width: 150),
           const SizedBox(height: 8),
           Card(
             child: Column(
               children: List.generate(
                   3,
-                  (index) => ListTile(
+                  (index) => const ListTile(
                         title: ShimmerWidget.rectangular(height: 16),
                         leading: ShimmerWidget.circular(width: 24, height: 24),
                       )),
@@ -448,7 +470,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           const SizedBox(height: 24),
 
           // Place Order Button
-          ShimmerWidget.rectangular(
+          const ShimmerWidget.rectangular(
             height: 48,
             width: double.infinity,
           ),

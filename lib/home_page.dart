@@ -128,8 +128,33 @@ class _HomePageState extends State<HomePage>
           _selectedAddressObject = defaultAddress;
         });
         _fetchNearbyStores();
+      } else {
+        // Show popup to add address
+        if (mounted) {
+          _showAddAddressPopup();
+        }
       }
     }
+  }
+
+  void _showAddAddressPopup() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Delivery Address'),
+        content: const Text('Please add a delivery address to continue.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _selectAddress();
+            },
+            child: const Text('Add Address'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _getCurrentLocation() async {
@@ -224,6 +249,26 @@ class _HomePageState extends State<HomePage>
     setState(() {
       _selectedIndex = index;
     });
+
+    if (index == 1) {
+      // Orders tab
+      final userId = AuthService.userId;
+      print('DEBUG: Orders tab clicked, userId: $userId');
+
+      if (userId != null) {
+        print('DEBUG: Navigating to orders page with userId: $userId');
+        Navigator.pushNamed(
+          context,
+          '/orders',
+          arguments: userId,
+        );
+      } else {
+        print('DEBUG: No userId found, showing login message');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please login to view orders')),
+        );
+      }
+    }
   }
 
   Future<void> _handleLogout() async {
@@ -799,11 +844,11 @@ class _HomePageState extends State<HomePage>
           Expanded(
             child: Padding(
               padding: EdgeInsets.all(isSmallScreen ? 6.0 : 8.0),
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ShimmerWidget.rectangular(height: 12),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   ShimmerWidget.rectangular(height: 10),
                 ],
               ),
@@ -838,15 +883,15 @@ class _HomePageState extends State<HomePage>
           Expanded(
             child: Padding(
               padding: EdgeInsets.all(isSmallScreen ? 6.0 : 8.0),
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ShimmerWidget.rectangular(height: 12),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Row(
                     children: [
                       ShimmerWidget.rectangular(width: 40, height: 10),
-                      const SizedBox(width: 4),
+                      SizedBox(width: 4),
                       ShimmerWidget.rectangular(width: 20, height: 10),
                     ],
                   ),

@@ -27,8 +27,8 @@ class StoreService {
         }),
       );
 
-      print('API Response status: ${response.statusCode}');
-      print('API Response body: ${response.body}');
+      // print('API Response status: ${response.statusCode}');
+      // print('API Response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
@@ -163,8 +163,8 @@ class StoreService {
         body: json.encode({'storeid': storeId}),
       );
 
-      print('Store Items API Response status: ${response.statusCode}');
-      print('Store Items API Response body: ${response.body}');
+      //print('Store Items API Response status: ${response.statusCode}');
+      //print('Store Items API Response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
@@ -207,19 +207,19 @@ class StoreService {
         }),
       );
 
-      print('Nearby Food API Response status: ${response.statusCode}');
-      print('Nearby Food API Response body: ${response.body}');
+      //print('Nearby Food API Response status: ${response.statusCode}');
+      //print('Nearby Food API Response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
-        print('Parsed response data: $data');
+        //print('Parsed response data: $data');
 
         if (data['status_code'] == 200) {
           if (data['NearByFoodList'] != null) {
             final foods = (data['NearByFoodList'] as List)
                 .map((food) => FoodItem.fromJson(food))
                 .toList();
-            print('Successfully parsed ${foods.length} food items');
+            //print('Successfully parsed ${foods.length} food items');
             return foods;
           } else {
             print('No food items found in response');

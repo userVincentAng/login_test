@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'address_selection_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'services/address_service.dart';
+import 'models/address.dart';
 
 class SavedAddressesPage extends StatefulWidget {
   final Future<void> Function(LatLng, String, String, String, String)
@@ -19,43 +19,28 @@ class SavedAddressesPage extends StatefulWidget {
 }
 
 class _SavedAddressesPageState extends State<SavedAddressesPage> {
-  List<Map<String, dynamic>> _savedAddresses = [];
+  final AddressService _addressService = AddressService();
+  List<Address> _addresses = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadSavedAddresses();
+    _loadAddresses();
   }
 
-  Future<void> _loadSavedAddresses() async {
+  Future<void> _loadAddresses() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final addressesJson = prefs.getStringList('saved_addresses') ?? [];
+      final addresses = await _addressService.getAllAddresses();
       setState(() {
-        _savedAddresses = addressesJson
-            .map((json) => Map<String, dynamic>.from(jsonDecode(json)))
-            .toList();
+        _addresses = addresses;
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading saved addresses: $e');
+      print('Error loading addresses: $e');
       setState(() {
         _isLoading = false;
       });
-    }
-  }
-
-  Future<void> _saveAddresses() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final addressesJson =
-          _savedAddresses.map((address) => jsonEncode(address)).toList();
-      await prefs.setStringList('saved_addresses', addressesJson);
-      debugPrint(
-          'Addresses saved successfully: ${_savedAddresses.length} addresses');
-    } catch (e) {
-      debugPrint('Error saving addresses: $e');
     }
   }
 
@@ -66,20 +51,14 @@ class _SavedAddressesPageState extends State<SavedAddressesPage> {
         builder: (context) => AddressSelectionPage(
           onAddressSelected:
               (latLng, address, floorUnit, instructions, label) async {
-            final newAddress = {
-              'lat': latLng.latitude,
-              'lng': latLng.longitude,
-              'address': address,
-              'floorUnit': floorUnit,
-              'instructions': instructions,
-              'label': label,
-              'timestamp': DateTime.now().millisecondsSinceEpoch,
-            };
-            setState(() {
-              _savedAddresses.add(newAddress);
-            });
-            await _saveAddresses();
-            return Future.value(newAddress);
+            final newAddress = Address.fromLatLng(
+              latLng,
+              address,
+              label: label,
+            );
+            await _addressService.addAddress(newAddress);
+            await _loadAddresses();
+            return Future.value(newAddress.toJson());
           },
         ),
       ),
@@ -87,16 +66,15 @@ class _SavedAddressesPageState extends State<SavedAddressesPage> {
   }
 
   Future<void> _editAddress(int index) async {
-    final address = _savedAddresses[index];
+    final address = _addresses[index];
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
         builder: (context) => AddressSelectionPage(
           initialPosition: Position(
-            latitude: address['lat'],
-            longitude: address['lng'],
-            timestamp:
-                DateTime.fromMillisecondsSinceEpoch(address['timestamp']),
+            latitude: address.coordinates.latitude,
+            longitude: address.coordinates.longitude,
+            timestamp: DateTime.now(),
             accuracy: 0,
             altitude: 0,
             heading: 0,
@@ -107,20 +85,17 @@ class _SavedAddressesPageState extends State<SavedAddressesPage> {
           ),
           onAddressSelected:
               (latLng, newAddress, floorUnit, instructions, label) async {
-            final updatedAddress = {
-              'lat': latLng.latitude,
-              'lng': latLng.longitude,
-              'address': newAddress,
-              'floorUnit': floorUnit,
-              'instructions': instructions,
-              'label': label,
-              'timestamp': DateTime.now().millisecondsSinceEpoch,
-            };
-            setState(() {
-              _savedAddresses[index] = updatedAddress;
-            });
-            await _saveAddresses();
-            return Future.value(updatedAddress);
+            final updatedAddress = address.copyWith(
+              fullAddress: newAddress,
+              label: label,
+              coordinates: Coordinates(
+                latitude: latLng.latitude,
+                longitude: latLng.longitude,
+              ),
+            );
+            await _addressService.updateAddress(updatedAddress);
+            await _loadAddresses();
+            return Future.value(updatedAddress.toJson());
           },
         ),
       ),
@@ -147,11 +122,14 @@ class _SavedAddressesPageState extends State<SavedAddressesPage> {
     );
 
     if (confirmed == true) {
-      setState(() {
-        _savedAddresses.removeAt(index);
-      });
-      await _saveAddresses();
+      await _addressService.deleteAddress(_addresses[index].id);
+      await _loadAddresses();
     }
+  }
+
+  Future<void> _setDefaultAddress(int index) async {
+    await _addressService.setDefaultAddress(_addresses[index].id);
+    await _loadAddresses();
   }
 
   IconData _getLabelIcon(String label) {
@@ -181,7 +159,7 @@ class _SavedAddressesPageState extends State<SavedAddressesPage> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _savedAddresses.isEmpty
+          : _addresses.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -208,29 +186,38 @@ class _SavedAddressesPageState extends State<SavedAddressesPage> {
                   ),
                 )
               : ListView.builder(
-                  itemCount: _savedAddresses.length,
+                  itemCount: _addresses.length,
                   itemBuilder: (context, index) {
-                    final address = _savedAddresses[index];
+                    final address = _addresses[index];
                     return ListTile(
-                      leading: Icon(_getLabelIcon(address['label'])),
-                      title: Text(address['label']),
+                      leading: Icon(_getLabelIcon(address.label)),
+                      title: Row(
+                        children: [
+                          Text(address.label),
+                          if (address.isDefault) ...[
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.star,
+                              size: 16,
+                              color: Colors.amber,
+                            ),
+                          ],
+                        ],
+                      ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(address['address']),
-                          if (address['floorUnit']?.isNotEmpty == true)
-                            Text('${address['floorUnit']}'),
-                          if (address['instructions']?.isNotEmpty == true)
-                            Text(
-                              'Note: ${address['instructions']}',
-                              style:
-                                  const TextStyle(fontStyle: FontStyle.italic),
-                            ),
+                          Text(address.fullAddress),
                         ],
                       ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          if (!address.isDefault)
+                            IconButton(
+                              icon: const Icon(Icons.star_border),
+                              onPressed: () => _setDefaultAddress(index),
+                            ),
                           IconButton(
                             icon: const Icon(Icons.edit),
                             onPressed: () => _editAddress(index),
@@ -241,15 +228,17 @@ class _SavedAddressesPageState extends State<SavedAddressesPage> {
                           ),
                         ],
                       ),
-                      onTap: () {
-                        widget.onAddressSelected(
-                          LatLng(address['lat'], address['lng']),
-                          address['address'],
-                          address['floorUnit'] ?? '',
-                          address['instructions'] ?? '',
-                          address['label'],
+                      onTap: () async {
+                        await widget.onAddressSelected(
+                          address.toLatLng(),
+                          address.fullAddress,
+                          '',
+                          '',
+                          address.label,
                         );
-                        Navigator.pop(context);
+                        if (mounted) {
+                          Navigator.pop(context);
+                        }
                       },
                     );
                   },

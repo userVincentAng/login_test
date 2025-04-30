@@ -132,15 +132,19 @@ class _CustomizeOrderPanelState extends State<CustomizeOrderPanel> {
   }
 
   double _calculateTotalPrice() {
-    // Add 10% to base price
-    double basePrice = widget.item.price * 1.10;
-    double total = basePrice * _quantity;
+    double basePrice;
 
-    // Add variant price if selected
+    // If a variant is selected, use its price as the base price
     if (_selectedOptions['variant'] != null) {
       final variant = _selectedOptions['variant'] as Map<String, dynamic>;
-      total += (variant['Price'] as double) * _quantity;
+      basePrice =
+          (variant['Price'] as double) * 1.10; // Add 10% to variant price
+    } else {
+      // Otherwise use the original item price with 10% increase
+      basePrice = widget.item.price * 1.10;
     }
+
+    double total = basePrice * _quantity;
 
     // Add add-ons prices
     final List<dynamic> addOns = _selectedOptions['addOns'] ?? [];

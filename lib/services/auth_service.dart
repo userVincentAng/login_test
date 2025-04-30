@@ -25,7 +25,11 @@ class AuthService {
 
   // Getter methods
   static String? get token => _token;
-  static String? get userId => _userId;
+  static String? get userId {
+    print('DEBUG: Getting userId: $_userId');
+    return _userId;
+  }
+
   static Map<String, dynamic>? get userData => _userData;
 
   // Method to store user data after successful login
@@ -35,6 +39,7 @@ class AuthService {
       // Extract data from login response
       final token = loginResponse['access_token'];
       final userId = loginResponse['user_id'];
+      print('DEBUG: Saving userId: $userId');
 
       // Store in secure storage
       await _storage.write(key: _tokenKey, value: token);
@@ -45,8 +50,9 @@ class AuthService {
       _token = token;
       _userId = userId;
       _userData = loginResponse;
+      print('DEBUG: UserId saved successfully');
     } catch (e) {
-      print('Error saving user session: $e');
+      print('DEBUG: Error saving user session: $e');
       throw Exception('Failed to save user session');
     }
   }
@@ -54,17 +60,22 @@ class AuthService {
   // Method to load user session on app start
   static Future<bool> loadUserSession() async {
     try {
-      _token = await _storage.read(key: _tokenKey);
-      _userId = await _storage.read(key: _userIdKey);
+      final token = await _storage.read(key: _tokenKey);
+      final userId = await _storage.read(key: _userIdKey);
       final userDataStr = await _storage.read(key: _userDataKey);
+      print('DEBUG: Loaded userId from storage: $userId');
 
-      if (userDataStr != null) {
+      if (token != null && userId != null && userDataStr != null) {
+        _token = token;
+        _userId = userId;
         _userData = jsonDecode(userDataStr);
+        print('DEBUG: User session loaded successfully');
+        return true;
       }
-
-      return _token != null;
+      print('DEBUG: No user session found');
+      return false;
     } catch (e) {
-      print('Error loading user session: $e');
+      print('DEBUG: Error loading user session: $e');
       return false;
     }
   }
@@ -102,10 +113,17 @@ class AuthService {
 
   static Future<bool> logout() async {
     try {
-      await clearUserSession();
+      print('DEBUG: Logging out, clearing userId: $_userId');
+      await _storage.delete(key: _tokenKey);
+      await _storage.delete(key: _userIdKey);
+      await _storage.delete(key: _userDataKey);
+      _token = null;
+      _userId = null;
+      _userData = null;
+      print('DEBUG: Logout successful');
       return true;
     } catch (e) {
-      print('Error during logout: $e');
+      print('DEBUG: Error during logout: $e');
       return false;
     }
   }
@@ -114,7 +132,7 @@ class AuthService {
     try {
       print('Verifying OTP for: $mobileNumber with OTP: $otp');
       final requestBody = {'UserId': '', 'MobileNo': mobileNumber, 'OTP': otp};
-      print('Request body: $requestBody');
+      //print('Request body: $requestBody');
 
       final response = await http.post(
         Uri.parse('$_baseUrl/shop/verifyotplogin'),

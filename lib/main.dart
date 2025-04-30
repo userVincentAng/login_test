@@ -4,6 +4,7 @@ import 'login_page.dart';
 import 'utils/theme.dart';
 import 'home_page.dart';
 import 'services/auth_service.dart';
+import 'screens/orders_page.dart';
 
 void main() async {
   try {
@@ -76,6 +77,9 @@ class MyApp extends StatelessWidget {
       routes: {
         '/': (context) => const LoginPage(),
         '/home': (context) => const HomePage(),
+        '/orders': (context) => OrdersPage(
+              userId: ModalRoute.of(context)!.settings.arguments as String,
+            ),
       },
       builder: (context, child) {
         ErrorWidget.builder = (FlutterErrorDetails details) {

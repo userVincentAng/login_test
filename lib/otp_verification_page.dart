@@ -120,8 +120,10 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
       print('Parsed response data: $responseData');
       final statusCode = responseData['status_code'];
       final message = responseData['message'];
+      final userId = responseData['UserId'];
       print('Status code: $statusCode');
       print('Message: $message');
+      print('User ID from OTP response: $userId');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         print('HTTP request was successful');
@@ -132,6 +134,15 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
         // Check for all possible success conditions
         if (statusCode == 200 || statusCode == 1) {
           print('Success: status_code is $statusCode');
+          // Save user session with the user ID from OTP response
+          if (userId != null) {
+            print('Saving user session with userId: $userId');
+            await AuthService.saveUserSession({
+              'access_token': AuthService.accessToken,
+              'user_id': userId,
+              'mobile_number': widget.mobileNumber,
+            });
+          }
           _handleSuccessfulVerification();
         } else if (statusCode == 3 &&
             message == "No user found with this mobile no.") {

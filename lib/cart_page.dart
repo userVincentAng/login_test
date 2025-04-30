@@ -60,8 +60,8 @@ class _CartPageState extends State<CartPage> {
   }
 
   Widget _buildShimmerCartItem() {
-    return Card(
-      margin: const EdgeInsets.symmetric(
+    return const Card(
+      margin: EdgeInsets.symmetric(
         horizontal: 16,
         vertical: 8,
       ),
@@ -70,11 +70,11 @@ class _CartPageState extends State<CartPage> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             ShimmerWidget.rectangular(height: 12),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             ShimmerWidget.rectangular(height: 12),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             ShimmerWidget.rectangular(height: 12, width: 80),
           ],
         ),
@@ -82,9 +82,9 @@ class _CartPageState extends State<CartPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ShimmerWidget.rectangular(width: 32, height: 32),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             ShimmerWidget.rectangular(width: 24, height: 24),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             ShimmerWidget.rectangular(width: 32, height: 32),
           ],
         ),
