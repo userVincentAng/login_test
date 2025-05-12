@@ -32,6 +32,134 @@ class _CartPageState extends State<CartPage> {
     setState(() {});
   }
 
+  Future<void> _editItem(int index) async {
+    final item = _cartService.items[index];
+    final TextEditingController quantityController =
+        TextEditingController(text: item.quantity.toString());
+    final TextEditingController notesController =
+        TextEditingController(text: item.notes ?? '');
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.edit, color: Color(0xFF5D8AA8)),
+              const SizedBox(width: 8),
+              Text('Edit ${item.name}'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '₱${item.price.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF5D8AA8),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Text('Quantity: '),
+                    IconButton(
+                      icon: const Icon(Icons.remove),
+                      onPressed: () {
+                        int currentQuantity =
+                            int.tryParse(quantityController.text) ?? 1;
+                        if (currentQuantity > 1) {
+                          quantityController.text =
+                              (currentQuantity - 1).toString();
+                        }
+                      },
+                    ),
+                    SizedBox(
+                      width: 50,
+                      child: TextField(
+                        controller: quantityController,
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      onPressed: () {
+                        int currentQuantity =
+                            int.tryParse(quantityController.text) ?? 1;
+                        quantityController.text =
+                            (currentQuantity + 1).toString();
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (item.selectedOptions != null) ...[
+                  if (item.selectedOptions!['variant'] != null)
+                    Text(
+                        'Size: ${item.selectedOptions!['variant']['CombiName']}'),
+                  if (item.selectedOptions!['addOns'] != null &&
+                      (item.selectedOptions!['addOns'] as List).isNotEmpty)
+                    Text(
+                        'Add-ons: ${(item.selectedOptions!['addOns'] as List).map((a) => a['Name']).join(', ')}'),
+                  if (item.selectedOptions!['sugarLevel'] != null)
+                    Text(
+                        'Sugar Level: ${item.selectedOptions!['sugarLevel']['Name']}'),
+                  const SizedBox(height: 16),
+                ],
+                const Text('Special Instructions:'),
+                TextField(
+                  controller: notesController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    hintText: 'Add any special instructions...',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final newQuantity =
+                    int.tryParse(quantityController.text) ?? item.quantity;
+                final newNotes = notesController.text.trim();
+
+                if (newQuantity != item.quantity) {
+                  await _cartService.updateQuantity(index, newQuantity);
+                }
+
+                if (newNotes != item.notes) {
+                  await _cartService.updateNotes(index, newNotes);
+                }
+
+                setState(() {});
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF5D8AA8),
+              ),
+              child: const Text('Save Changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _clearCart() async {
     final bool? confirm = await showDialog<bool>(
       context: context,
@@ -179,6 +307,10 @@ class _CartPageState extends State<CartPage> {
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit, size: 20),
+                                      onPressed: () => _editItem(index),
+                                    ),
                                     IconButton(
                                       icon: const Icon(Icons.remove),
                                       onPressed: () async {

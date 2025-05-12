@@ -4,7 +4,6 @@ import 'models/store_item.dart';
 import 'services/store_service.dart';
 import 'customize_order.dart';
 import 'package:shimmer/shimmer.dart';
-import 'widgets/shimmer_widget.dart';
 
 class StoreInfoDialog extends StatefulWidget {
   final Store store;
@@ -24,7 +23,6 @@ class _StoreInfoDialogState extends State<StoreInfoDialog> {
   @override
   void initState() {
     super.initState();
-    // Simulate loading delay
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         setState(() {
@@ -83,7 +81,6 @@ class _StoreInfoDialogState extends State<StoreInfoDialog> {
           children: [
             Stack(
               children: [
-                // Google Maps placeholder with shimmer
                 Container(
                   height: 200,
                   decoration: BoxDecoration(
@@ -96,9 +93,7 @@ class _StoreInfoDialogState extends State<StoreInfoDialog> {
                       ? Shimmer.fromColors(
                           baseColor: Colors.grey[300]!,
                           highlightColor: Colors.grey[100]!,
-                          child: Container(
-                            color: Colors.white,
-                          ),
+                          child: Container(color: Colors.white),
                         )
                       : const Center(
                           child: Image(
@@ -107,7 +102,6 @@ class _StoreInfoDialogState extends State<StoreInfoDialog> {
                           ),
                         ),
                 ),
-                // Close button
                 Positioned(
                   top: 8,
                   left: 8,
@@ -146,7 +140,6 @@ class _StoreInfoDialogState extends State<StoreInfoDialog> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Store name
                   _isLoading
                       ? _buildShimmerContainer(30, 200)
                       : Text(
@@ -157,7 +150,6 @@ class _StoreInfoDialogState extends State<StoreInfoDialog> {
                           ),
                         ),
                   const SizedBox(height: 16),
-                  // Location section
                   const Text(
                     'Location',
                     style: TextStyle(
@@ -166,7 +158,6 @@ class _StoreInfoDialogState extends State<StoreInfoDialog> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  // Address
                   _isLoading
                       ? _buildShimmerContainer(20)
                       : Text(
@@ -183,7 +174,6 @@ class _StoreInfoDialogState extends State<StoreInfoDialog> {
                           ),
                   ],
                   const SizedBox(height: 24),
-                  // Store Hours section
                   const Text(
                     'Store Hours',
                     style: TextStyle(
@@ -192,7 +182,6 @@ class _StoreInfoDialogState extends State<StoreInfoDialog> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  // Store hours
                   ...List.generate(7, (index) {
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -289,7 +278,6 @@ class _ShopDetailPageState extends State<ShopDetailPage>
         _isLoading = false;
       });
 
-      // Initialize tab controller after categories are loaded
       if (_categories.isNotEmpty) {
         _tabController = TabController(length: _categories.length, vsync: this);
         _tabController.addListener(() {
@@ -299,7 +287,6 @@ class _ShopDetailPageState extends State<ShopDetailPage>
         });
       }
 
-      // Calculate category positions after items are loaded
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _calculateCategoryPositions();
       });
@@ -321,13 +308,10 @@ class _ShopDetailPageState extends State<ShopDetailPage>
     for (var category in _categories) {
       if (category.id != null) {
         _categoryPositions[category.id!] = currentPosition;
-        // Add height of category header
-        currentPosition += 56; // Approximate height of category header
-        // Add height of items in this category
+        currentPosition += 56;
         final categoryItems =
             _items.where((item) => item.categoryId == category.id).length;
-        currentPosition +=
-            (categoryItems * 100.0); // Approximate height of each item
+        currentPosition += (categoryItems * 100.0);
       }
     }
   }
@@ -354,7 +338,6 @@ class _ShopDetailPageState extends State<ShopDetailPage>
     final currentPosition = _scrollController.position.pixels;
     int newSelectedTab = 0;
 
-    // Find the category that's currently most visible
     for (var i = 0; i < _categories.length; i++) {
       final category = _categories[i];
       final position = _categoryPositions[category.id];
@@ -363,67 +346,71 @@ class _ShopDetailPageState extends State<ShopDetailPage>
       }
     }
 
-    // Update selected tab if it changed
     if (newSelectedTab != _selectedTab) {
       setState(() {
         _selectedTab = newSelectedTab;
       });
-      // Update tab controller without triggering scroll
       if (_tabController.index != newSelectedTab) {
         _tabController.animateTo(newSelectedTab);
       }
     }
   }
 
-  Widget _buildLoadingMenuItem(bool isSmallScreen) {
-    return Container(
-      margin: EdgeInsets.only(bottom: isSmallScreen ? 12.0 : 16.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
+  Widget _buildLoadingMenuItem() {
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
-      padding: EdgeInsets.all(isSmallScreen ? 10.0 : 12.0),
       child: Shimmer.fromColors(
-        baseColor: Colors.grey[300]!,
+        baseColor: Colors.grey[200]!,
         highlightColor: Colors.grey[100]!,
-        child: Row(
-          children: [
-            Expanded(
-              flex: 3,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: double.infinity,
-                    height: 16,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: 80,
-                    height: 14,
-                    color: Colors.white,
-                  ),
-                ],
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-            ),
-            Container(
-              width: isSmallScreen ? 70 : 80,
-              height: isSmallScreen ? 70 : 80,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      height: 18,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: 80,
+                      height: 16,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      height: 14,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      width: double.infinity,
+                      height: 14,
+                      color: Colors.white,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -450,8 +437,7 @@ class _ShopDetailPageState extends State<ShopDetailPage>
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: 3,
-          itemBuilder: (context, index) =>
-              _buildLoadingMenuItem(_isSmallScreen),
+          itemBuilder: (context, index) => _buildLoadingMenuItem(),
         ),
       ],
     );
@@ -465,14 +451,16 @@ class _ShopDetailPageState extends State<ShopDetailPage>
       body: CustomScrollView(
         controller: _scrollController,
         slivers: [
-          // App Bar with background color
           SliverAppBar(
             expandedHeight: 200,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
                 widget.store.name,
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               background: Container(
                 decoration: BoxDecoration(
@@ -519,13 +507,27 @@ class _ShopDetailPageState extends State<ShopDetailPage>
               ),
             ],
           ),
-          // Tab Bar
           if (!_isLoading && _errorMessage.isEmpty)
             SliverPersistentHeader(
               delegate: _SliverAppBarDelegate(
                 TabBar(
                   controller: _tabController,
                   isScrollable: true,
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  indicator: UnderlineTabIndicator(
+                    borderSide: const BorderSide(width: 3, color: airforceBlue),
+                    insets: EdgeInsets.symmetric(
+                        horizontal: _isSmallScreen ? 8 : 16),
+                  ),
+                  labelStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
+                  ),
+                  unselectedLabelStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
                   tabs: _categories
                       .map((category) => Tab(text: category.categoryName))
                       .toList(),
@@ -536,9 +538,11 @@ class _ShopDetailPageState extends State<ShopDetailPage>
               ),
               pinned: true,
             ),
-          // Menu Items
           SliverPadding(
-            padding: EdgeInsets.all(_isSmallScreen ? 12.0 : 16.0),
+            padding: EdgeInsets.symmetric(
+              horizontal: _isSmallScreen ? 12.0 : 20.0,
+              vertical: 8.0,
+            ),
             sliver: _isLoading
                 ? SliverToBoxAdapter(
                     child: Column(
@@ -563,23 +567,58 @@ class _ShopDetailPageState extends State<ShopDetailPage>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.all(16),
-                                  color: Colors.grey[200],
-                                  child: Text(
-                                    category.categoryName,
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                  width: double.infinity,
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        offset: const Offset(0, 2),
+                                        blurRadius: 6,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                            16, 24, 16, 16),
+                                        child: Text(
+                                          category.categoryName,
+                                          style: const TextStyle(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.black87,
+                                            letterSpacing: -0.5,
+                                          ),
+                                        ),
+                                      ),
+                                      if (categoryItems.length == 1)
+                                        _buildItemCard(categoryItems[0])
+                                      else
+                                        ListView.separated(
+                                          shrinkWrap: true,
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
+                                          itemCount: categoryItems.length,
+                                          separatorBuilder: (context, index) =>
+                                              const Divider(
+                                            height: 1,
+                                            thickness: 0.5,
+                                            color: Color(0xFFE0E0E0),
+                                          ),
+                                          itemBuilder: (context, index) {
+                                            return _buildItemCard(
+                                                categoryItems[index]);
+                                          },
+                                        ),
+                                    ],
                                   ),
                                 ),
-                                ...categoryItems.map((item) => _buildMenuItem(
-                                      item.productName,
-                                      item.price.toStringAsFixed(2),
-                                      Colors.orange[100]!,
-                                      _isSmallScreen,
-                                      item: item,
-                                    )),
                               ],
                             );
                           }).toList(),
@@ -588,110 +627,153 @@ class _ShopDetailPageState extends State<ShopDetailPage>
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          // Show order summary
+        },
+        backgroundColor: airforceBlue,
+        elevation: 4,
+        icon: const Icon(Icons.shopping_bag),
+        label: const Text("View Order"),
+        heroTag: 'shop_detail_fab',
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(50),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
-  Widget _buildMenuItem(
-    String name,
-    String price,
-    Color backgroundColor,
-    bool isSmallScreen, {
-    StoreItem? item,
-  }) {
-    // Calculate price with 10% increase
-    double originalPrice = double.parse(price);
-    double increasedPrice = originalPrice * 1.10;
-
-    return Container(
-      margin: EdgeInsets.only(bottom: isSmallScreen ? 12.0 : 16.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
+  Widget _buildItemCard(StoreItem item) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          onTap: () {
-            if (item != null) {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (context) => DraggableScrollableSheet(
-                  initialChildSize: 0.7,
-                  minChildSize: 0.5,
-                  maxChildSize: 0.9,
-                  builder: (context, scrollController) => CustomizeOrderPanel(
-                    item: item,
-                    storeId: widget.store.storeId,
+        onTap: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => DraggableScrollableSheet(
+              initialChildSize: 0.7,
+              minChildSize: 0.5,
+              maxChildSize: 0.9,
+              builder: (context, scrollController) => CustomizeOrderPanel(
+                item: item,
+                storeId: widget.store.storeId,
+              ),
+            ),
+          );
+        },
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.productName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      height: 1.3,
+                    ),
                   ),
-                ),
-              );
-            }
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: EdgeInsets.all(isSmallScreen ? 10.0 : 12.0),
-            child: Row(
+                  const SizedBox(height: 6),
+                  Text(
+                    '₱${(item.price * 1.10).toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF5D8AA8),
+                    ),
+                  ),
+                  if (item.description?.isNotEmpty ?? false) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      item.description!,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                        height: 1.4,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Stack(
               children: [
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: TextStyle(
-                          fontSize: isSmallScreen ? 14 : 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: isSmallScreen ? 2 : 4),
-                      Text(
-                        '₱${increasedPrice.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontSize: isSmallScreen ? 14 : 16,
-                          color: const Color(0xFF5D8AA8),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: isSmallScreen ? 70 : 80,
-                  height: isSmallScreen ? 70 : 80,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: backgroundColor,
-                  ),
-                  child: item?.imgUrl.isNotEmpty == true
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            'http://test.shoppazing.com/api${item!.imgUrl}',
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    width: 100,
+                    height: 100,
+                    child: item.imgUrl.isNotEmpty
+                        ? Image.network(
+                            'http://test.shoppazing.com/api${item.imgUrl}',
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
-                              return const Center(
-                                child: Icon(Icons.fastfood, size: 40),
+                              return Container(
+                                color: Colors.grey[100],
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.fastfood,
+                                    size: 40,
+                                    color: Colors.black38,
+                                  ),
+                                ),
                               );
                             },
+                          )
+                        : Container(
+                            color: Colors.grey[100],
+                            child: const Center(
+                              child: Icon(
+                                Icons.fastfood,
+                                size: 40,
+                                color: Colors.black38,
+                              ),
+                            ),
                           ),
-                        )
-                      : const Center(child: Icon(Icons.fastfood, size: 40)),
+                  ),
+                ),
+                Positioned(
+                  right: -8,
+                  bottom: -8,
+                  child: FloatingActionButton(
+                    mini: true,
+                    backgroundColor: const Color(0xFF5D8AA8),
+                    elevation: 2,
+                    heroTag: 'add_item_${item.id}',
+                    child: const Icon(Icons.add, size: 20),
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => DraggableScrollableSheet(
+                          initialChildSize: 0.7,
+                          minChildSize: 0.5,
+                          maxChildSize: 0.9,
+                          builder: (context, scrollController) =>
+                              CustomizeOrderPanel(
+                            item: item,
+                            storeId: widget.store.storeId,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -714,7 +796,10 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return Container(color: Colors.white, child: _tabBar);
+    return Container(
+      color: Colors.white,
+      child: _tabBar,
+    );
   }
 
   @override
